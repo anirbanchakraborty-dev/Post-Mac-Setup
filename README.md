@@ -38,6 +38,7 @@ Rerunning is safe. Homebrew skips already-installed packages, and shell configs 
 | Networking | Tailscale, 1Password, 1Password CLI |
 | Browser & Messaging | Ulaa, WhatsApp |
 | Window Management | AltTab, Rectangle Pro |
+| Menu Bar | Blip |
 | Fonts | MesloLG Nerd Font, JetBrains Mono Nerd Font |
 
 ### Shell Environment
