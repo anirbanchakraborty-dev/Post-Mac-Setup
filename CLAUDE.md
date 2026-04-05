@@ -7,7 +7,7 @@ Idempotent, single-file Bash script (`mac-setup.sh`) that bootstraps a full macO
 1. **Preflight** — checks internet, installs Xcode CLT and Homebrew (Apple Silicon + Intel aware)
 2. **Taps** — adds third-party Homebrew repos (Verible, bbrew)
 3. **Formulae** — installs CLI tools: shells (bash, zsh), languages (Python, Node, Go, Rust, R, GCC), EDA tools (Icarus Verilog, Yosys, Verilator, Verible, Surfer), terminal utilities (bat, eza, fd, fzf, ripgrep, zoxide, jq, htop, tldr, dust, bottom, hyperfine, difftastic), build tools (cmake, llvm, pandoc)
-4. **Casks** — installs GUI apps: VS Code, iTerm2, Claude, Microsoft Office, 1Password, Tailscale, Zotero, Inkscape, MacTeX, etc.
+4. **Casks** — installs GUI apps: VS Code, iTerm2, Claude, Microsoft Office, 1Password, Tailscale, Zotero, Inkscape, MacTeX, Blip, etc.
 5. **npm globals** — netlistsvg
 6. **Post-install** — shell setup (/etc/shells, default shell), Git LFS, Git global config, Rust toolchain, fzf bindings, MacTeX PATH, Oh My Zsh + Powerlevel10k + plugins
 7. **Shell config** — writes `~/.zsh_paths`, `~/.zsh_aliases`, `~/.zshrc` using marker-based injection (`inject_block`) that preserves user content between runs
