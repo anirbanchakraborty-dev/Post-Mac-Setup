@@ -340,6 +340,9 @@ CASKS=(
     alt-tab             # Windows-style alt-tab switcher
     rectangle-pro       # Window snapping and management
 
+    # Menu bar
+    blip                # Wallpaper manager
+
     # Fonts (Nerd Font patched — needed for Powerlevel10k icons)
     font-meslo-lg-nerd-font
     font-jetbrains-mono-nerd-font
