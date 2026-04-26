@@ -9,6 +9,7 @@
 # ║                                                                      ║
 # ║  Flags:  --help          Show usage                                  ║
 # ║          --dry-run       Show what would be installed (no changes)   ║
+# ║          --upgrade       Also run 'brew upgrade' (off by default)    ║
 # ║          --skip-casks    Skip GUI app (cask) installation            ║
 # ║          --skip-formulae Skip CLI tool (formula) installation        ║
 # ║          --skip-macos    Skip macOS .DS_Store defaults                ║
@@ -25,6 +26,7 @@ set -euo pipefail
 # ARGUMENT PARSING
 # ─────────────────────────────────────────────────────────────────────
 DRY_RUN=false
+UPGRADE=false
 SKIP_CASKS=false
 SKIP_FORMULAE=false
 SKIP_MACOS=false
@@ -32,7 +34,7 @@ SKIP_SHELL=false
 NO_LOG=false
 
 usage() {
-    sed -n '3,17p' "$0" | sed 's/^# //; s/^#//'
+    sed -n '3,18p' "$0" | sed 's/^# //; s/^#//'
     exit 0
 }
 
@@ -40,6 +42,7 @@ for arg in "$@"; do
     case "$arg" in
         --help|-h)       usage ;;
         --dry-run)       DRY_RUN=true ;;
+        --upgrade)       UPGRADE=true ;;
         --skip-casks)    SKIP_CASKS=true ;;
         --skip-formulae) SKIP_FORMULAE=true ;;
         --skip-macos)    SKIP_MACOS=true ;;
@@ -87,27 +90,158 @@ FAILED_ITEMS=()
 INSTALLED_COUNT=0
 SKIPPED_COUNT=0
 TOTAL_START=$SECONDS
+SCRIPT_COMPLETED=false
+SUDO_KEEPALIVE_PID=""
 
-install_or_warn() {
-    local cmd="$1"
-    local name="$2"
+# Always print a stats summary on exit (success, failure, or Ctrl-C).
+# Manual-steps section only prints when the script reached its natural end.
+print_summary() {
+    local exit_code=$?
+
+    # Stop the sudo keep-alive child if it's still running.
+    if [ -n "$SUDO_KEEPALIVE_PID" ] && kill -0 "$SUDO_KEEPALIVE_PID" 2>/dev/null; then
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    fi
+
+    local elapsed=$(( SECONDS - TOTAL_START ))
+    local mins=$(( elapsed / 60 ))
+    local secs=$(( elapsed % 60 ))
+
+    echo ""
+    echo -e "${CYAN}${BOLD}══════════════════════════════════════════════════════════════${NC}"
+    if $SCRIPT_COMPLETED; then
+        echo -e "${CYAN}${BOLD}  Setup Complete!${NC}"
+    else
+        echo -e "${CYAN}${BOLD}  Setup Aborted (exit $exit_code) — partial summary${NC}"
+    fi
+    echo -e "${CYAN}${BOLD}══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "  ${BOLD}Stats:${NC}"
+    echo -e "    Newly installed:     ${GREEN}${INSTALLED_COUNT}${NC}"
+    echo -e "    Already present:     ${CYAN}${SKIPPED_COUNT}${NC}"
+    echo -e "    Failures:            ${YELLOW}${#FAILED_ITEMS[@]}${NC}"
+    echo -e "    Total time:          ${CYAN}${mins}m ${secs}s${NC}"
+    echo ""
+
+    if [ ${#FAILED_ITEMS[@]} -gt 0 ]; then
+        echo -e "${YELLOW}${BOLD}Items that had issues (may need manual attention):${NC}"
+        for item in "${FAILED_ITEMS[@]}"; do
+            echo -e "  ${YELLOW}•${NC} $item"
+        done
+        echo ""
+    fi
+
+    if $SCRIPT_COMPLETED; then
+        echo -e "${BOLD}Manual steps remaining:${NC}"
+        echo ""
+        echo -e "  ${CYAN}1.${NC} ${BOLD}Restart your terminal${NC} (or run: exec zsh)"
+        echo ""
+        echo -e "  ${CYAN}2.${NC} ${BOLD}Run 'p10k configure'${NC} to set up the Powerlevel10k prompt."
+        echo "     Choose MesloLGS NF or JetBrainsMono NF as your terminal font."
+        echo ""
+        echo -e "  ${CYAN}3.${NC} ${BOLD}Set your iTerm2 font:${NC}"
+        echo "     Preferences → Profiles → Text → Font → MesloLGS Nerd Font"
+        echo ""
+        echo -e "  ${CYAN}4.${NC} ${BOLD}Verify Homebrew versions are default:${NC}"
+        echo "     which git     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/git"
+        echo "     which python3 → should show ${BREW_PREFIX:-/opt/homebrew}/bin/python3"
+        echo "     which zsh     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/zsh"
+        echo "     which bash    → should show ${BREW_PREFIX:-/opt/homebrew}/bin/bash"
+        echo ""
+        echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} 1Password, Setapp, Tailscale, GitHub Desktop, etc."
+        echo ""
+
+        if ! $NO_LOG && [ -n "${LOG_FILE:-}" ]; then
+            echo -e "  ${BOLD}Log saved to:${NC} $LOG_FILE"
+            echo ""
+        fi
+
+        echo -e "${GREEN}${BOLD}Happy coding! 🚀${NC}"
+    fi
+}
+trap print_summary EXIT
+
+# Run a command, or just describe it under --dry-run.
+# Use as: run cmd arg1 arg2 ...   (no shell-eval; arguments preserved)
+run() {
     if $DRY_RUN; then
-        info "[DRY RUN] Would install: $name"
+        info "[DRY RUN] Would run: $*"
+        return 0
+    fi
+    "$@"
+}
+
+# Install a list of formulae or casks in a single 'brew install' call
+# (much faster than per-package), with per-package fallback on batch failure.
+# Skips packages already installed and tracks INSTALLED_COUNT / SKIPPED_COUNT.
+#
+# Usage: batch_install formula pkg1 pkg2 ...
+#        batch_install cask   pkg1 pkg2 ...
+batch_install() {
+    local kind="$1"; shift
+    local items=("$@")
+    local cask_flag=()
+    [[ "$kind" == "cask" ]] && cask_flag=(--cask)
+
+    if $DRY_RUN; then
+        for item in "${items[@]}"; do
+            info "[DRY RUN] Would install $kind: $item"
+        done
         return
     fi
-    if ! eval "$cmd"; then
-        warn "Failed to install: $name (continuing...)"
-        FAILED_ITEMS+=("$name")
+
+    # Snapshot what's already installed so we can skip without invoking brew.
+    local installed_list
+    if [[ "$kind" == "cask" ]]; then
+        installed_list="$(brew list --cask 2>/dev/null || true)"
     else
-        success "$name"
-        (( INSTALLED_COUNT++ )) || true
+        installed_list="$(brew list --formula 2>/dev/null || true)"
     fi
+
+    local to_install=()
+    for item in "${items[@]}"; do
+        # Strip any tap prefix (e.g. chipsalliance/verible/verible -> verible)
+        local short="${item##*/}"
+        if grep -qFx -- "$short" <<<"$installed_list"; then
+            success "$item (already installed)"
+            (( SKIPPED_COUNT++ )) || true
+        else
+            to_install+=("$item")
+        fi
+    done
+
+    if (( ${#to_install[@]} == 0 )); then
+        info "Nothing new to install for $kind"
+        return
+    fi
+
+    info "Installing ${#to_install[@]} new $kind(s) in one batch: ${to_install[*]}"
+    if brew install "${cask_flag[@]}" "${to_install[@]}"; then
+        for item in "${to_install[@]}"; do
+            success "$item"
+            (( INSTALLED_COUNT++ )) || true
+        done
+        return
+    fi
+
+    warn "Batch install failed — falling back to one-by-one"
+    for item in "${to_install[@]}"; do
+        if brew install "${cask_flag[@]}" "$item"; then
+            success "$item"
+            (( INSTALLED_COUNT++ )) || true
+        else
+            warn "Failed to install $kind: $item (continuing...)"
+            FAILED_ITEMS+=("$item ($kind)")
+        fi
+    done
 }
 
 # ─────────────────────────────────────────────────────────────────────
 # LOGGING — tee all output to a timestamped log file
+# Uses ~/Library/Logs (the macOS-native log location) so logs survive
+# reboots and the periodic /tmp purge.
 # ─────────────────────────────────────────────────────────────────────
-LOG_DIR="$(mktemp -d)/mac-setup"
+LOG_DIR="$HOME/Library/Logs/mac-setup"
 LOG_FILE="$LOG_DIR/mac-setup-$(date +%Y%m%d_%H%M%S).log"
 
 if ! $NO_LOG; then
@@ -146,12 +280,35 @@ if ! $DRY_RUN; then
     read -r -p "  Press Enter to continue (or Ctrl-C to abort)... "
 fi
 
-# Ensure Xcode CLT is installed (required by Homebrew and many formulae)
+# Cache sudo credentials upfront so /etc/shells, chsh, etc. don't block
+# halfway through a 5 GB MacTeX download. Background keep-alive refreshes
+# the timestamp every minute until the script exits.
+if ! $DRY_RUN; then
+    info "Caching sudo credentials (you'll be prompted once)..."
+    if ! sudo -v; then
+        error "Could not obtain sudo. Some steps (e.g. /etc/shells, chsh) will fail."
+    else
+        # Keep the sudo timestamp warm; child exits when this script does.
+        ( while kill -0 "$$" 2>/dev/null; do sudo -n true 2>/dev/null; sleep 60; done ) &
+        SUDO_KEEPALIVE_PID=$!
+        info "Sudo cached (keep-alive PID: $SUDO_KEEPALIVE_PID)"
+    fi
+fi
+
+# Ensure Xcode CLT is installed (required by Homebrew and many formulae).
+# 'xcode-select --install' returns immediately and pops a GUI installer;
+# poll until the toolchain is actually present rather than waiting for a key.
 if ! xcode-select -p &>/dev/null; then
-    info "Installing Xcode Command Line Tools..."
-    xcode-select --install
-    echo "  Press any key after CLT installation finishes..."
-    read -r -n 1
+    if $DRY_RUN; then
+        info "[DRY RUN] Would install Xcode Command Line Tools"
+    else
+        info "Installing Xcode Command Line Tools (GUI installer will appear)..."
+        xcode-select --install 2>/dev/null || true
+        info "Waiting for installation to complete (polling every 5s)..."
+        until xcode-select -p &>/dev/null; do
+            sleep 5
+        done
+    fi
 fi
 success "Xcode CLT installed"
 
@@ -204,8 +361,13 @@ info "Homebrew prefix: $BREW_PREFIX"
 # UPDATE HOMEBREW
 # ─────────────────────────────────────────────────────────────────────
 section "Updating Homebrew"
-brew update
-brew upgrade
+run brew update
+if $UPGRADE; then
+    info "--upgrade flag set: upgrading already-installed packages..."
+    run brew upgrade
+else
+    info "Skipping 'brew upgrade' (pass --upgrade to enable)"
+fi
 success "Homebrew updated"
 
 # ─────────────────────────────────────────────────────────────────────
@@ -218,10 +380,28 @@ TAPS=(
     "Valkyrie00/homebrew-bbrew"   # Bold Brew (bbrew) TUI for Homebrew
 )
 
-for tap in "${TAPS[@]}"; do
-    info "Tapping $tap..."
-    install_or_warn "brew tap $tap" "tap: $tap"
-done
+if $DRY_RUN; then
+    for tap in "${TAPS[@]}"; do
+        info "[DRY RUN] Would tap: $tap"
+    done
+else
+    EXISTING_TAPS="$(brew tap)"
+    for tap in "${TAPS[@]}"; do
+        if grep -qFix -- "$tap" <<<"$EXISTING_TAPS"; then
+            success "tap: $tap (already tapped)"
+            (( SKIPPED_COUNT++ )) || true
+        else
+            info "Tapping $tap..."
+            if brew tap "$tap"; then
+                success "tap: $tap"
+                (( INSTALLED_COUNT++ )) || true
+            else
+                warn "Failed to tap: $tap"
+                FAILED_ITEMS+=("tap: $tap")
+            fi
+        fi
+    done
+fi
 
 # ─────────────────────────────────────────────────────────────────────
 # FORMULAE (CLI tools — brew install)
@@ -289,10 +469,7 @@ FORMULAE=(
 if $SKIP_FORMULAE; then
     warn "Skipping formulae (--skip-formulae)"
 else
-    for formula in "${FORMULAE[@]}"; do
-        info "Installing $formula..."
-        install_or_warn "brew install $formula" "$formula"
-    done
+    batch_install formula "${FORMULAE[@]}"
 fi
 
 # ─────────────────────────────────────────────────────────────────────
@@ -333,7 +510,6 @@ CASKS=(
     1password-cli       # 1Password CLI (op command)
 
     # Browser & messaging
-    ulaa                # Ulaa Browser (Zoho, privacy-focused)
     whatsapp            # WhatsApp desktop
 
     # Window management
@@ -351,10 +527,7 @@ CASKS=(
 if $SKIP_CASKS; then
     warn "Skipping casks (--skip-casks)"
 else
-    for cask in "${CASKS[@]}"; do
-        info "Installing $cask..."
-        install_or_warn "brew install --cask $cask" "$cask (cask)"
-    done
+    batch_install cask "${CASKS[@]}"
 fi
 
 # ─────────────────────────────────────────────────────────────────────
@@ -365,9 +538,22 @@ section "Installing npm Global Packages"
 # Ensure Homebrew node is on PATH for this session
 export PATH="$BREW_PREFIX/bin:$PATH"
 
-if command -v npm &>/dev/null; then
-    info "Installing netlistsvg (schematic viewer for Yosys JSON netlists)..."
-    install_or_warn "npm install -g netlistsvg" "netlistsvg (npm)"
+if $DRY_RUN; then
+    info "[DRY RUN] Would install netlistsvg via npm"
+elif command -v npm &>/dev/null; then
+    if npm list -g --depth=0 netlistsvg &>/dev/null; then
+        success "netlistsvg (npm) (already installed)"
+        (( SKIPPED_COUNT++ )) || true
+    else
+        info "Installing netlistsvg (schematic viewer for Yosys JSON netlists)..."
+        if npm install -g netlistsvg; then
+            success "netlistsvg (npm)"
+            (( INSTALLED_COUNT++ )) || true
+        else
+            warn "Failed to install netlistsvg"
+            FAILED_ITEMS+=("netlistsvg (npm)")
+        fi
+    fi
 else
     warn "npm not found — skipping netlistsvg. Install node first, then run: npm install -g netlistsvg"
     FAILED_ITEMS+=("netlistsvg (npm)")
@@ -388,24 +574,36 @@ BREW_ZSH="$BREW_PREFIX/bin/zsh"
 
 # Add Homebrew bash and zsh to /etc/shells if not already there
 if [ -f "$BREW_BASH" ] && ! grep -qF "$BREW_BASH" /etc/shells; then
-    info "Adding Homebrew bash to /etc/shells (requires password)..."
-    echo "$BREW_BASH" | sudo tee -a /etc/shells >/dev/null
-    success "Added $BREW_BASH to /etc/shells"
+    if $DRY_RUN; then
+        info "[DRY RUN] Would add $BREW_BASH to /etc/shells"
+    else
+        info "Adding Homebrew bash to /etc/shells (requires password)..."
+        echo "$BREW_BASH" | sudo tee -a /etc/shells >/dev/null
+        success "Added $BREW_BASH to /etc/shells"
+    fi
 fi
 
 if [ -f "$BREW_ZSH" ] && ! grep -qF "$BREW_ZSH" /etc/shells; then
-    info "Adding Homebrew zsh to /etc/shells (requires password)..."
-    echo "$BREW_ZSH" | sudo tee -a /etc/shells >/dev/null
-    success "Added $BREW_ZSH to /etc/shells"
+    if $DRY_RUN; then
+        info "[DRY RUN] Would add $BREW_ZSH to /etc/shells"
+    else
+        info "Adding Homebrew zsh to /etc/shells (requires password)..."
+        echo "$BREW_ZSH" | sudo tee -a /etc/shells >/dev/null
+        success "Added $BREW_ZSH to /etc/shells"
+    fi
 fi
 
 # Set Homebrew zsh as default shell
 if [ -f "$BREW_ZSH" ]; then
     CURRENT_SHELL="$(dscl . -read /Users/"$USER" UserShell | awk '{print $2}')"
     if [ "$CURRENT_SHELL" != "$BREW_ZSH" ]; then
-        info "Changing default shell to Homebrew zsh (requires password)..."
-        chsh -s "$BREW_ZSH"
-        success "Default shell changed to $BREW_ZSH"
+        if $DRY_RUN; then
+            info "[DRY RUN] Would chsh to $BREW_ZSH"
+        else
+            info "Changing default shell to Homebrew zsh (requires password)..."
+            chsh -s "$BREW_ZSH"
+            success "Default shell changed to $BREW_ZSH"
+        fi
     else
         success "Default shell is already $BREW_ZSH"
     fi
@@ -417,7 +615,7 @@ fi
 section "Post-Install: Git LFS"
 
 if command -v git-lfs &>/dev/null; then
-    git lfs install
+    run git lfs install
     success "Git LFS initialized"
 else
     warn "git-lfs not found — skipping"
@@ -428,49 +626,61 @@ fi
 # ─────────────────────────────────────────────────────────────────────
 section "Post-Install: Git Global Config"
 
-CURRENT_GIT_NAME="$(git config --global user.name 2>/dev/null || echo "")"
-CURRENT_GIT_EMAIL="$(git config --global user.email 2>/dev/null || echo "")"
+if $DRY_RUN; then
+    info "[DRY RUN] Would prompt for git user.name/user.email and set defaults"
+else
+    CURRENT_GIT_NAME="$(git config --global user.name 2>/dev/null || echo "")"
+    CURRENT_GIT_EMAIL="$(git config --global user.email 2>/dev/null || echo "")"
 
-if [ -n "$CURRENT_GIT_NAME" ] && [ -n "$CURRENT_GIT_EMAIL" ]; then
-    info "Git is already configured:"
-    echo "    Name:  $CURRENT_GIT_NAME"
-    echo "    Email: $CURRENT_GIT_EMAIL"
-    echo ""
-    read -r -p "    Do you want to change these? [y/N] " change_git
-    if [[ "$change_git" =~ ^[Yy]$ ]]; then
-        CURRENT_GIT_NAME=""
-        CURRENT_GIT_EMAIL=""
-    else
-        success "Git global config unchanged"
+    if [ -n "$CURRENT_GIT_NAME" ] && [ -n "$CURRENT_GIT_EMAIL" ]; then
+        info "Git is already configured:"
+        echo "    Name:  $CURRENT_GIT_NAME"
+        echo "    Email: $CURRENT_GIT_EMAIL"
+        echo ""
+        read -r -p "    Do you want to change these? [y/N] " change_git
+        if [[ "$change_git" =~ ^[Yy]$ ]]; then
+            CURRENT_GIT_NAME=""
+            CURRENT_GIT_EMAIL=""
+        else
+            success "Git global config unchanged"
+        fi
     fi
-fi
 
-if [ -z "$CURRENT_GIT_NAME" ]; then
-    echo ""
-    read -r -p "    Enter your full name for Git (e.g. Your Name): " git_name
-    if [ -n "$git_name" ]; then
-        git config --global user.name "$git_name"
-        success "Git user.name set to: $git_name"
-    else
-        warn "No name entered — skipping git user.name"
+    if [ -z "$CURRENT_GIT_NAME" ]; then
+        echo ""
+        read -r -p "    Enter your full name for Git (e.g. Your Name): " git_name
+        if [ -n "$git_name" ]; then
+            git config --global user.name "$git_name"
+            success "Git user.name set to: $git_name"
+        else
+            warn "No name entered — skipping git user.name"
+        fi
     fi
-fi
 
-if [ -z "$CURRENT_GIT_EMAIL" ]; then
-    read -r -p "    Enter your email for Git (e.g. you@example.com): " git_email
-    if [ -n "$git_email" ]; then
-        git config --global user.email "$git_email"
-        success "Git user.email set to: $git_email"
-    else
-        warn "No email entered — skipping git user.email"
+    if [ -z "$CURRENT_GIT_EMAIL" ]; then
+        read -r -p "    Enter your email for Git (e.g. you@example.com): " git_email
+        if [ -n "$git_email" ]; then
+            git config --global user.email "$git_email"
+            success "Git user.email set to: $git_email"
+        else
+            warn "No email entered — skipping git user.email"
+        fi
     fi
-fi
 
-# Set sensible defaults if not already configured
-git config --global init.defaultBranch main 2>/dev/null
-git config --global pull.rebase false 2>/dev/null
-git config --global core.autocrlf input 2>/dev/null
-success "Git defaults set (init.defaultBranch=main, pull.rebase=false, core.autocrlf=input)"
+    # Set sensible defaults only if the user hasn't already chosen otherwise.
+    # 'git config --get' returns nonzero when the key is unset; that's our signal.
+    set_git_default() {
+        local key="$1" value="$2"
+        if ! git config --global --get "$key" >/dev/null 2>&1; then
+            git config --global "$key" "$value"
+            info "Set git $key=$value"
+        fi
+    }
+    set_git_default init.defaultBranch main
+    set_git_default pull.rebase false
+    set_git_default core.autocrlf input
+    success "Git defaults checked"
+fi
 
 # ─────────────────────────────────────────────────────────────────────
 # POST-INSTALL: RUST (rustup-init)
@@ -481,9 +691,13 @@ section "Post-Install: Rust Toolchain"
 RUSTUP_INIT="$BREW_PREFIX/opt/rustup/bin/rustup-init"
 if [ -f "$RUSTUP_INIT" ]; then
     if [ ! -d "$HOME/.rustup" ]; then
-        info "Initializing Rust toolchain via rustup (non-interactive)..."
-        "$RUSTUP_INIT" -y --no-modify-path
-        success "Rust toolchain installed"
+        if $DRY_RUN; then
+            info "[DRY RUN] Would run rustup-init -y --no-modify-path"
+        else
+            info "Initializing Rust toolchain via rustup (non-interactive)..."
+            "$RUSTUP_INIT" -y --no-modify-path
+            success "Rust toolchain installed"
+        fi
     else
         success "Rust toolchain already initialized (~/.rustup exists)"
     fi
@@ -498,9 +712,13 @@ section "Post-Install: fzf Key Bindings"
 
 FZF_INSTALL="$BREW_PREFIX/opt/fzf/install"
 if [ -f "$FZF_INSTALL" ]; then
-    info "Installing fzf key bindings and fuzzy completion..."
-    "$FZF_INSTALL" --all --no-bash --no-fish --key-bindings --completion --update-rc
-    success "fzf key bindings installed"
+    if $DRY_RUN; then
+        info "[DRY RUN] Would run $FZF_INSTALL --all --no-bash --no-fish --key-bindings --completion --update-rc"
+    else
+        info "Installing fzf key bindings and fuzzy completion..."
+        "$FZF_INSTALL" --all --no-bash --no-fish --key-bindings --completion --update-rc
+        success "fzf key bindings installed"
+    fi
 else
     warn "fzf install script not found — skipping"
 fi
@@ -510,13 +728,13 @@ fi
 # ─────────────────────────────────────────────────────────────────────
 section "Post-Install: MacTeX PATH"
 
+# The MacTeX PATH is wired into ~/.zsh_paths below, so future shells pick it up
+# automatically. Nothing to do for the current process — this section just
+# verifies the install completed.
 if [ -d "/Library/TeX/texbin" ]; then
-    info "MacTeX detected — running path_helper to update PATH..."
-    eval "$(/usr/libexec/path_helper)"
-    success "MacTeX PATH configured"
+    success "MacTeX detected at /Library/TeX/texbin (PATH configured via ~/.zsh_paths)"
 else
-    warn "MacTeX texbin not found — it may still be installing. Run later:"
-    echo "    eval \"\$(/usr/libexec/path_helper)\""
+    warn "MacTeX texbin not found — it may still be installing in the background"
 fi
 
 # ─────────────────────────────────────────────────────────────────────
@@ -525,9 +743,13 @@ fi
 section "Post-Install: Oh My Zsh"
 
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
-    info "Installing Oh My Zsh (unattended)..."
-    RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    success "Oh My Zsh installed"
+    if $DRY_RUN; then
+        info "[DRY RUN] Would install Oh My Zsh (unattended)"
+    else
+        info "Installing Oh My Zsh (unattended)..."
+        RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        success "Oh My Zsh installed"
+    fi
 else
     success "Oh My Zsh already installed"
 fi
@@ -541,9 +763,13 @@ section "Post-Install: Powerlevel10k Theme"
 
 P10K_DIR="$ZSH_CUSTOM/themes/powerlevel10k"
 if [ ! -d "$P10K_DIR" ]; then
-    info "Cloning Powerlevel10k..."
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
-    success "Powerlevel10k installed"
+    if $DRY_RUN; then
+        info "[DRY RUN] Would git clone Powerlevel10k -> $P10K_DIR"
+    else
+        info "Cloning Powerlevel10k..."
+        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
+        success "Powerlevel10k installed"
+    fi
 else
     success "Powerlevel10k already installed"
 fi
@@ -553,35 +779,29 @@ fi
 # ─────────────────────────────────────────────────────────────────────
 section "Post-Install: Zsh Plugins"
 
-# zsh-autosuggestions
-AUTOSUGG_DIR="$ZSH_CUSTOM/plugins/zsh-autosuggestions"
-if [ ! -d "$AUTOSUGG_DIR" ]; then
-    info "Cloning zsh-autosuggestions..."
-    git clone https://github.com/zsh-users/zsh-autosuggestions.git "$AUTOSUGG_DIR"
-    success "zsh-autosuggestions installed"
-else
-    success "zsh-autosuggestions already installed"
-fi
-
-# zsh-syntax-highlighting (provides better autocomplete visual feedback)
-SYNHI_DIR="$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
-if [ ! -d "$SYNHI_DIR" ]; then
-    info "Cloning zsh-syntax-highlighting..."
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$SYNHI_DIR"
-    success "zsh-syntax-highlighting installed"
-else
-    success "zsh-syntax-highlighting already installed"
-fi
-
-# zsh-completions (additional completion definitions)
-ZSHCOMP_DIR="$ZSH_CUSTOM/plugins/zsh-completions"
-if [ ! -d "$ZSHCOMP_DIR" ]; then
-    info "Cloning zsh-completions..."
-    git clone https://github.com/zsh-users/zsh-completions.git "$ZSHCOMP_DIR"
-    success "zsh-completions installed"
-else
-    success "zsh-completions already installed"
-fi
+# Each entry: "plugin-name git-url"
+ZSH_PLUGINS=(
+    "zsh-autosuggestions     https://github.com/zsh-users/zsh-autosuggestions.git"
+    "zsh-syntax-highlighting https://github.com/zsh-users/zsh-syntax-highlighting.git"
+    "zsh-completions         https://github.com/zsh-users/zsh-completions.git"
+)
+for entry in "${ZSH_PLUGINS[@]}"; do
+    read -r plugin_name plugin_url <<<"$entry"
+    plugin_dir="$ZSH_CUSTOM/plugins/$plugin_name"
+    if [ -d "$plugin_dir" ]; then
+        success "$plugin_name already installed"
+    elif $DRY_RUN; then
+        info "[DRY RUN] Would git clone $plugin_url -> $plugin_dir"
+    else
+        info "Cloning $plugin_name..."
+        if git clone --depth=1 "$plugin_url" "$plugin_dir"; then
+            success "$plugin_name installed"
+        else
+            warn "Failed to clone $plugin_name"
+            FAILED_ITEMS+=("$plugin_name")
+        fi
+    fi
+done
 
 # ─────────────────────────────────────────────────────────────────────
 # UPDATE SHELL CONFIG FILES
@@ -596,6 +816,11 @@ section "Updating Shell Config Files (preserving your existing config)"
 ZSHRC="$HOME/.zshrc"
 ZSH_PATHS="$HOME/.zsh_paths"
 ZSH_ALIASES="$HOME/.zsh_aliases"
+
+if $DRY_RUN; then
+    info "[DRY RUN] Would back up and inject managed blocks into:"
+    echo "    $ZSH_PATHS, $ZSH_ALIASES, $ZSHRC"
+else
 
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 
@@ -854,6 +1079,8 @@ echo "    ~/.zsh_paths   — PATH exports, env variables (edit paths here)"
 echo "    ~/.zsh_aliases — aliases and shortcuts (edit aliases here)"
 echo "    ~/.zshrc       — sources both + Oh My Zsh + plugins"
 
+fi  # end DRY_RUN guard around dotfile writes
+
 fi  # end SKIP_SHELL
 
 # ─────────────────────────────────────────────────────────────────────
@@ -894,52 +1121,7 @@ else
     info "[DRY RUN] Would clean Homebrew cache and export Brewfile"
 fi
 
-# ─────────────────────────────────────────────────────────────────────
-# SUMMARY
-# ─────────────────────────────────────────────────────────────────────
-section "Setup Complete!"
-
-TOTAL_ELAPSED=$(( SECONDS - TOTAL_START ))
-TOTAL_MIN=$(( TOTAL_ELAPSED / 60 ))
-TOTAL_SEC=$(( TOTAL_ELAPSED % 60 ))
-
-echo -e "${GREEN}${BOLD}Everything installed and configured.${NC}\n"
-echo -e "  ${BOLD}Stats:${NC}"
-echo -e "    Packages installed:  ${GREEN}${INSTALLED_COUNT}${NC}"
-echo -e "    Failures:            ${YELLOW}${#FAILED_ITEMS[@]}${NC}"
-echo -e "    Total time:          ${CYAN}${TOTAL_MIN}m ${TOTAL_SEC}s${NC}"
-echo ""
-
-if [ ${#FAILED_ITEMS[@]} -gt 0 ]; then
-    echo -e "${YELLOW}${BOLD}The following items had issues (may need manual attention):${NC}"
-    for item in "${FAILED_ITEMS[@]}"; do
-        echo -e "  ${YELLOW}•${NC} $item"
-    done
-    echo ""
-fi
-
-echo -e "${BOLD}Manual steps remaining:${NC}"
-echo ""
-echo -e "  ${CYAN}1.${NC} ${BOLD}Restart your terminal${NC} (or run: exec zsh)"
-echo ""
-echo -e "  ${CYAN}2.${NC} ${BOLD}Run 'p10k configure'${NC} to set up the Powerlevel10k prompt."
-echo "     Choose MesloLGS NF or JetBrainsMono NF as your terminal font."
-echo ""
-echo -e "  ${CYAN}3.${NC} ${BOLD}Set your iTerm2 font:${NC}"
-echo "     Preferences → Profiles → Text → Font → MesloLGS Nerd Font"
-echo ""
-echo -e "  ${CYAN}4.${NC} ${BOLD}Verify Homebrew versions are default:${NC}"
-echo "     which git     → should show $BREW_PREFIX/bin/git"
-echo "     which python3 → should show $BREW_PREFIX/bin/python3"
-echo "     which zsh     → should show $BREW_PREFIX/bin/zsh"
-echo "     which bash    → should show $BREW_PREFIX/bin/bash"
-echo ""
-echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} 1Password, Setapp, Tailscale, GitHub Desktop, etc."
-echo ""
-
-if ! $NO_LOG; then
-    echo -e "  ${BOLD}Log saved to:${NC} $LOG_FILE"
-    echo ""
-fi
-
-echo -e "${GREEN}${BOLD}Happy coding! 🚀${NC}"
+# Mark the script as having reached its natural end. The EXIT trap
+# (registered near the top) prints the final summary + manual steps
+# whether we get here normally or exit early via Ctrl-C / error.
+SCRIPT_COMPLETED=true
