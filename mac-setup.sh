@@ -12,6 +12,7 @@
 # ║          --upgrade       Also run 'brew upgrade' (off by default)    ║
 # ║          --skip-casks    Skip GUI app (cask) installation            ║
 # ║          --skip-formulae Skip CLI tool (formula) installation        ║
+# ║          --skip-extras   Skip direct downloads (Edge, etc.)          ║
 # ║          --skip-macos    Skip macOS .DS_Store defaults                ║
 # ║          --skip-shell    Skip shell config (.zshrc, etc.)            ║
 # ║          --no-log        Don't save output to a log file             ║
@@ -29,12 +30,13 @@ DRY_RUN=false
 UPGRADE=false
 SKIP_CASKS=false
 SKIP_FORMULAE=false
+SKIP_EXTRAS=false
 SKIP_MACOS=false
 SKIP_SHELL=false
 NO_LOG=false
 
 usage() {
-    sed -n '3,18p' "$0" | sed 's/^# //; s/^#//'
+    sed -n '3,19p' "$0" | sed 's/^# //; s/^#//'
     exit 0
 }
 
@@ -45,6 +47,7 @@ for arg in "$@"; do
         --upgrade)       UPGRADE=true ;;
         --skip-casks)    SKIP_CASKS=true ;;
         --skip-formulae) SKIP_FORMULAE=true ;;
+        --skip-extras)   SKIP_EXTRAS=true ;;
         --skip-macos)    SKIP_MACOS=true ;;
         --skip-shell)    SKIP_SHELL=true ;;
         --no-log)        NO_LOG=true ;;
@@ -236,6 +239,54 @@ batch_install() {
     done
 }
 
+# Download a .pkg from a URL and run /usr/sbin/installer on it.
+# Used for vendor apps that don't have a Homebrew cask, or where the user
+# explicitly wants the publisher's own installer (e.g. Microsoft Edge).
+#
+# Usage: install_pkg_from_url "<app-path-to-check>" "<label>" "<download-url>"
+# Example:
+#   install_pkg_from_url "/Applications/Microsoft Edge.app" "Microsoft Edge" \
+#       "https://go.microsoft.com/fwlink/?linkid=2069148"
+install_pkg_from_url() {
+    local app_path="$1"
+    local label="$2"
+    local url="$3"
+
+    if [ -d "$app_path" ]; then
+        success "$label (already installed)"
+        (( SKIPPED_COUNT++ )) || true
+        return
+    fi
+
+    if $DRY_RUN; then
+        info "[DRY RUN] Would download $label from $url and run 'sudo installer -pkg ... -target /'"
+        return
+    fi
+
+    local tmpdir pkg_path
+    tmpdir="$(mktemp -d)"
+    # Filename matters for installer logging only; .pkg extension required.
+    pkg_path="$tmpdir/$(echo "$label" | tr ' ' '_').pkg"
+
+    info "Downloading $label from $url ..."
+    if ! curl -fsSL --retry 3 --retry-delay 2 -o "$pkg_path" "$url"; then
+        warn "Failed to download $label"
+        FAILED_ITEMS+=("$label (download)")
+        rm -rf "$tmpdir"
+        return
+    fi
+
+    info "Installing $label (requires sudo)..."
+    if sudo installer -pkg "$pkg_path" -target /; then
+        success "$label"
+        (( INSTALLED_COUNT++ )) || true
+    else
+        warn "Failed to install $label via /usr/sbin/installer"
+        FAILED_ITEMS+=("$label (installer)")
+    fi
+    rm -rf "$tmpdir"
+}
+
 # ─────────────────────────────────────────────────────────────────────
 # LOGGING — tee all output to a timestamped log file
 # Uses ~/Library/Logs (the macOS-native log location) so logs survive
@@ -272,6 +323,7 @@ echo ""
 echo -e "  ${BOLD}Configuration:${NC}"
 echo -e "    Formulae (CLI):    $( $SKIP_FORMULAE && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}install${NC}" )"
 echo -e "    Casks (GUI):       $( $SKIP_CASKS    && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}install${NC}" )"
+echo -e "    Extras (direct):   $( $SKIP_EXTRAS   && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}install${NC}" )"
 echo -e "    macOS defaults:    $( $SKIP_MACOS    && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}apply${NC}" )"
 echo -e "    Shell config:      $( $SKIP_SHELL    && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}configure${NC}" )"
 echo ""
@@ -557,6 +609,25 @@ elif command -v npm &>/dev/null; then
 else
     warn "npm not found — skipping netlistsvg. Install node first, then run: npm install -g netlistsvg"
     FAILED_ITEMS+=("netlistsvg (npm)")
+fi
+
+# ─────────────────────────────────────────────────────────────────────
+# EXTRAS — Direct downloads (apps installed via vendor .pkg, not Homebrew)
+# Use this for apps where the publisher's installer is preferred over a
+# Homebrew cask (e.g. Microsoft Edge, where the cask just wraps the same
+# .pkg but adds an extra layer of staleness).
+# ─────────────────────────────────────────────────────────────────────
+section "Installing Extras (Direct Downloads)"
+
+if $SKIP_EXTRAS; then
+    warn "Skipping extras (--skip-extras)"
+else
+    # Microsoft Edge — universal .pkg from Microsoft's stable fwlink.
+    # The fwlink ID is the same one edge.microsoft.com itself redirects to.
+    install_pkg_from_url \
+        "/Applications/Microsoft Edge.app" \
+        "Microsoft Edge" \
+        "https://go.microsoft.com/fwlink/?linkid=2069148"
 fi
 
 # ─────────────────────────────────────────────────────────────────────

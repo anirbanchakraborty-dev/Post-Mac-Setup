@@ -9,11 +9,12 @@ Idempotent, single-file Bash script (`mac-setup.sh`) that bootstraps a full macO
 3. **Formulae** — installs CLI tools in a **single batched `brew install`** call (with per-package fallback on batch failure). Shells (bash, zsh), languages (Python, Node, Go, Rust, R, GCC), EDA tools (Icarus Verilog, Yosys, Verilator, Verible, Surfer), terminal utilities (bat, eza, fd, fzf, ripgrep, zoxide, jq, htop, tldr, dust, bottom, hyperfine, difftastic), build tools (cmake, llvm, pandoc)
 4. **Casks** — single batched `brew install --cask` for all GUI apps: VS Code, iTerm2, Claude, Microsoft Office, 1Password, Tailscale, Zotero, Inkscape, MacTeX, Blip, etc.
 5. **npm globals** — netlistsvg (skipped if already in `npm list -g`)
-6. **Post-install** — shell setup (/etc/shells, default shell), Git LFS, Git global config (uses `set_git_default` to avoid clobbering existing user-set values), Rust toolchain, fzf bindings, Oh My Zsh + Powerlevel10k + plugins
-7. **Shell config** — writes `~/.zsh_paths`, `~/.zsh_aliases`, `~/.zshrc` using marker-based injection (`inject_block`) that preserves user content between runs
-8. **macOS defaults** — prevents .DS_Store on network/USB volumes
-9. **Cleanup** — `brew cleanup` + exports a `Brewfile` snapshot next to the script
-10. **Summary** — printed via `EXIT` trap (so it appears even on Ctrl-C / mid-script failure); reports newly installed / already present / failures / elapsed time
+6. **Extras (direct downloads)** — vendor `.pkg` installers downloaded straight from the publisher (e.g. **Microsoft Edge** via Microsoft's stable fwlink → `installer -pkg ... -target /`). Use this category when the publisher's installer is preferred over a Homebrew cask. Driven by the `install_pkg_from_url` helper
+7. **Post-install** — shell setup (/etc/shells, default shell), Git LFS, Git global config (uses `set_git_default` to avoid clobbering existing user-set values), Rust toolchain, fzf bindings, Oh My Zsh + Powerlevel10k + plugins
+8. **Shell config** — writes `~/.zsh_paths`, `~/.zsh_aliases`, `~/.zshrc` using marker-based injection (`inject_block`) that preserves user content between runs
+9. **macOS defaults** — prevents .DS_Store on network/USB volumes
+10. **Cleanup** — `brew cleanup` + exports a `Brewfile` snapshot next to the script
+11. **Summary** — printed via `EXIT` trap (so it appears even on Ctrl-C / mid-script failure); reports newly installed / already present / failures / elapsed time
 
 ## File structure
 
@@ -33,6 +34,7 @@ Post-Mac-Setup/
 | `--upgrade` | Also run `brew upgrade` on already-installed packages (off by default to avoid surprise breakage on rerun) |
 | `--skip-casks` | Skip GUI app installation |
 | `--skip-formulae` | Skip CLI tool installation |
+| `--skip-extras` | Skip non-Homebrew direct downloads (Microsoft Edge, etc.) |
 | `--skip-macos` | Skip macOS .DS_Store defaults |
 | `--skip-shell` | Skip shell config (.zshrc, .zsh_paths, .zsh_aliases) |
 | `--no-log` | Don't write a log file |
@@ -57,6 +59,8 @@ Post-Mac-Setup/
 - The script uses `set -euo pipefail`. Helpers:
   - **`run cmd args…`** — executes the command, or just prints `[DRY RUN] Would run: …` under `--dry-run`. Use this for any side-effecting command that should respect dry-run
   - **`batch_install formula|cask pkg1 pkg2 …`** — handles already-installed detection, batched install, fallback, and counter updates
+  - **`install_pkg_from_url <app-path> <label> <url>`** — downloads a publisher `.pkg` and runs `sudo installer -pkg ... -target /`. Use for non-Homebrew apps where you want the vendor's own installer. Already-present apps are detected by `app_path` and skipped; honors `--dry-run`
   - When adding new state-changing commands, wrap with `run`, gate with `if $DRY_RUN`, or guard with `|| true` so failures land in `FAILED_ITEMS` rather than killing the script
 - macOS `defaults write` commands go in the macOS System Defaults section
 - New dotfile-writing logic must live inside the `if $DRY_RUN ... else ... fi` block in the "Updating Shell Config Files" section — otherwise dry-run will mutate the user's home directory
+- New non-Homebrew app installs go in the **Extras (Direct Downloads)** section; gate with `$SKIP_EXTRAS` and call `install_pkg_from_url`
