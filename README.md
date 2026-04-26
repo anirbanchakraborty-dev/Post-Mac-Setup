@@ -8,7 +8,7 @@ A single, idempotent Bash script that bootstraps a complete macOS development en
 chmod +x mac-setup.sh && ./mac-setup.sh
 ```
 
-Rerunning is safe. Homebrew skips already-installed packages, and shell configs are updated in-place using marker-based injection.
+Rerunning is safe. Already-installed packages are detected upfront and skipped, and shell configs are updated in-place using marker-based injection. Logs are written to `~/Library/Logs/mac-setup/`.
 
 ## What Gets Installed
 
@@ -36,7 +36,7 @@ Rerunning is safe. Homebrew skips already-installed packages, and shell configs 
 | Research | Zotero, Inkscape |
 | Terminal | iTerm2 |
 | Networking | Tailscale, 1Password, 1Password CLI |
-| Browser & Messaging | Ulaa, WhatsApp |
+| Messaging | WhatsApp |
 | Window Management | AltTab, Rectangle Pro |
 | Menu Bar | Blip |
 | Fonts | MesloLG Nerd Font, JetBrains Mono Nerd Font |
@@ -57,6 +57,7 @@ Rerunning is safe. Homebrew skips already-installed packages, and shell configs 
 ```
 --help, -h        Show usage
 --dry-run         Preview what would be installed (no changes made)
+--upgrade         Also run 'brew upgrade' on already-installed packages
 --skip-casks      Skip GUI app installation
 --skip-formulae   Skip CLI tool installation
 --skip-macos      Skip macOS .DS_Store defaults
@@ -75,16 +76,21 @@ Rerunning is safe. Homebrew skips already-installed packages, and shell configs 
 
 # Minimal run — just packages, no shell or macOS config
 ./mac-setup.sh --skip-shell --skip-macos
+
+# Bootstrap and also upgrade already-installed packages
+./mac-setup.sh --upgrade
 ```
 
 ## How It Works
 
-1. **Preflight** — verifies internet connectivity, installs Xcode Command Line Tools and Homebrew
-2. **Install** — taps third-party repos, installs formulae, casks, and npm globals
-3. **Configure** — sets up shells in `/etc/shells`, configures Git, initializes Rust, fzf, and MacTeX
+1. **Preflight** — verifies internet connectivity, caches `sudo` upfront with a background keep-alive, installs Xcode Command Line Tools (polls until ready), and installs Homebrew
+2. **Install** — taps third-party repos, then installs all formulae and all casks in batched `brew install` calls (much faster than per-package), with a per-package fallback if a batch fails. Already-installed packages are detected via `brew list` and skipped without invoking brew
+3. **Configure** — sets up shells in `/etc/shells`, configures Git (without clobbering existing user-set values), initializes Rust, fzf, and MacTeX
 4. **Shell Config** — writes `~/.zsh_paths`, `~/.zsh_aliases`, and `~/.zshrc` using marker-based block injection that preserves your own additions between runs
 5. **macOS Defaults** — applies `.DS_Store` prevention
 6. **Cleanup** — runs `brew cleanup` and exports a `Brewfile` snapshot
+
+A summary (newly installed / already present / failures / elapsed time) prints on every exit — including Ctrl-C and mid-script failures — via an `EXIT` trap.
 
 ### Marker-Based Injection
 
