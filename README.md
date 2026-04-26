@@ -30,10 +30,10 @@ Rerunning is safe. Already-installed packages are detected upfront and skipped, 
 |---|---|
 | Editors & IDEs | VS Code, CotEditor |
 | Git | GitHub Desktop |
-| AI | Claude |
+| AI | Claude (desktop), Claude Code (CLI) |
 | Productivity | Microsoft Office, Setapp, Google Drive |
 | LaTeX | MacTeX, Texifier |
-| Research | Zotero, Inkscape |
+| Research | Zotero, Obsidian, Inkscape |
 | Terminal | iTerm2 |
 | Networking | Tailscale, 1Password, 1Password CLI |
 | Messaging | WhatsApp |

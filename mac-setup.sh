@@ -538,7 +538,8 @@ CASKS=(
     github              # GitHub Desktop
 
     # AI
-    claude              # Anthropic Claude desktop app
+    claude              # Anthropic Claude desktop app (GUI)
+    claude-code         # Anthropic Claude Code (terminal CLI assistant)
 
     # Productivity
     microsoft-office    # Microsoft 365 (Word, Excel, PowerPoint, etc.)
@@ -551,6 +552,7 @@ CASKS=(
 
     # Research & graphics
     zotero              # Reference manager
+    obsidian            # Markdown note-taking and personal knowledge base
     inkscape            # Vector graphics editor
 
     # Terminal
