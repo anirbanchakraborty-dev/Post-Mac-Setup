@@ -41,6 +41,14 @@ Rerunning is safe. Already-installed packages are detected upfront and skipped, 
 | Menu Bar | Blip |
 | Fonts | MesloLG Nerd Font, JetBrains Mono Nerd Font |
 
+### Extras (Direct Downloads)
+
+Apps installed straight from the publisher's `.pkg` (not via Homebrew):
+
+| App | Source |
+|---|---|
+| Microsoft Edge | Microsoft fwlink → official `MicrosoftEdge.pkg` |
+
 ### Shell Environment
 
 - **Oh My Zsh** with Powerlevel10k theme
@@ -60,6 +68,7 @@ Rerunning is safe. Already-installed packages are detected upfront and skipped, 
 --upgrade         Also run 'brew upgrade' on already-installed packages
 --skip-casks      Skip GUI app installation
 --skip-formulae   Skip CLI tool installation
+--skip-extras     Skip direct downloads (Microsoft Edge, etc.)
 --skip-macos      Skip macOS .DS_Store defaults
 --skip-shell      Skip shell configuration (.zshrc, etc.)
 --no-log          Don't save output to a log file
@@ -84,7 +93,7 @@ Rerunning is safe. Already-installed packages are detected upfront and skipped, 
 ## How It Works
 
 1. **Preflight** — verifies internet connectivity, caches `sudo` upfront with a background keep-alive, installs Xcode Command Line Tools (polls until ready), and installs Homebrew
-2. **Install** — taps third-party repos, then installs all formulae and all casks in batched `brew install` calls (much faster than per-package), with a per-package fallback if a batch fails. Already-installed packages are detected via `brew list` and skipped without invoking brew
+2. **Install** — taps third-party repos, then installs all formulae and all casks in batched `brew install` calls (much faster than per-package), with a per-package fallback if a batch fails. Already-installed packages are detected via `brew list` and skipped without invoking brew. Direct-download apps (e.g. Microsoft Edge) are pulled straight from the publisher's `.pkg` and installed via `sudo installer`
 3. **Configure** — sets up shells in `/etc/shells`, configures Git (without clobbering existing user-set values), initializes Rust, fzf, and MacTeX
 4. **Shell Config** — writes `~/.zsh_paths`, `~/.zsh_aliases`, and `~/.zshrc` using marker-based block injection that preserves your own additions between runs
 5. **macOS Defaults** — applies `.DS_Store` prevention
