@@ -31,7 +31,7 @@ Rerunning is safe. Already-installed packages are detected upfront and skipped, 
 | Editors & IDEs | VS Code, CotEditor |
 | AI | Claude (desktop), Claude Code (CLI) |
 | Productivity | Microsoft Office, Setapp, Google Drive |
-| LaTeX | MacTeX, Texifier |
+| LaTeX | MacTeX, Texifier, Skim |
 | Research | Zotero, Inkscape |
 | Terminal | iTerm2 |
 | Networking | Tailscale, 1Password, 1Password CLI |

@@ -546,6 +546,7 @@ CASKS=(
     # LaTeX
     mactex              # Full TeX Live distribution (large ~5 GB download)
     texifier            # LaTeX editor for macOS
+    skim                # PDF viewer with SyncTeX support (preferred for LaTeX)
 
     # Research & graphics
     zotero              # Reference manager
