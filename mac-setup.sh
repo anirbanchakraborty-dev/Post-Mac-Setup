@@ -151,7 +151,7 @@ print_summary() {
         echo "     which zsh     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/zsh"
         echo "     which bash    → should show ${BREW_PREFIX:-/opt/homebrew}/bin/bash"
         echo ""
-        echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} 1Password, Setapp, Tailscale, GitHub Desktop, etc."
+        echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} 1Password, Setapp, Tailscale, etc."
         echo ""
 
         if ! $NO_LOG && [ -n "${LOG_FILE:-}" ]; then
@@ -534,9 +534,6 @@ CASKS=(
     visual-studio-code  # Code editor by Microsoft
     coteditor           # Lightweight plain-text editor for macOS
 
-    # Git GUI
-    github              # GitHub Desktop
-
     # AI
     claude              # Anthropic Claude desktop app (GUI)
     claude-code         # Anthropic Claude Code (terminal CLI assistant)
@@ -552,7 +549,6 @@ CASKS=(
 
     # Research & graphics
     zotero              # Reference manager
-    obsidian            # Markdown note-taking and personal knowledge base
     inkscape            # Vector graphics editor
 
     # Terminal

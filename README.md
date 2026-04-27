@@ -29,11 +29,10 @@ Rerunning is safe. Already-installed packages are detected upfront and skipped, 
 | Category | Apps |
 |---|---|
 | Editors & IDEs | VS Code, CotEditor |
-| Git | GitHub Desktop |
 | AI | Claude (desktop), Claude Code (CLI) |
 | Productivity | Microsoft Office, Setapp, Google Drive |
 | LaTeX | MacTeX, Texifier |
-| Research | Zotero, Obsidian, Inkscape |
+| Research | Zotero, Inkscape |
 | Terminal | iTerm2 |
 | Networking | Tailscale, 1Password, 1Password CLI |
 | Messaging | WhatsApp |
@@ -119,7 +118,7 @@ Anything you add outside these markers is preserved across reruns.
 2. **Run `p10k configure`** to set up the Powerlevel10k prompt
 3. **Set iTerm2 font**: Preferences > Profiles > Text > Font > MesloLGS Nerd Font
 4. **Verify Homebrew versions**: `which git`, `which python3`, `which zsh`
-5. **Sign in to apps**: 1Password, Setapp, Tailscale, GitHub Desktop, etc.
+5. **Sign in to apps**: 1Password, Setapp, Tailscale, etc.
 
 ## File Structure
 
