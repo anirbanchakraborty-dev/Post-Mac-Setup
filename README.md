@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 46 command-line tools, 29 GUI apps, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 46 command-line tools, 26 GUI apps, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -87,7 +87,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 `sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
 
-### GUI apps and fonts (29 casks)
+### GUI apps and fonts (26 casks)
 
 | Category | Casks |
 |---|---|
@@ -97,9 +97,9 @@ Two detection details are worth knowing because they are where naive "is it inst
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
-| Media and audio | `iina`, `finetune` |
+| Media and audio | `iina` |
 | Terminal | `iterm2` |
-| Networking and security | `tailscale-app`, `1password`, `1password-cli` |
+| Networking and security | `tailscale-app` |
 | Browser and messaging | `whatsapp` |
 | Window management | `loop` |
 | Menu bar | `blip`, `stats`, `thaw` |

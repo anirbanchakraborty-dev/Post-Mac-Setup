@@ -128,9 +128,9 @@ it also arrives transitively via `r` and `openblas`.)
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
-| Media & audio | `iina`, `finetune` (per-app volume, EQ, audio routing) |
+| Media & audio | `iina` |
 | Terminal | `iterm2` |
-| Networking & security | `tailscale-app` (renamed upstream from `tailscale`), `1password`, `1password-cli` |
+| Networking & security | `tailscale-app` (renamed upstream from `tailscale`) |
 | Browser & messaging | `whatsapp` |
 | Window management | `loop` |
 | Menu bar | `blip`, `stats`, `thaw` |
@@ -195,8 +195,8 @@ brew keeps listing it and the script reported "already installed" for an app tha
 was gone. For casks that ship an `.app`, `batch_install` resolves the artifact
 names from one `brew info --json=v2` call and confirms the bundle exists in
 `/Applications` or `~/Applications` before believing the record. A cask with no
-`app` artifact (CLI tools like `1password-cli`, the Nerd Fonts, pkg-based installs
-like `nx-studio`) has nothing to verify and is left alone. A missing bundle is
+`app` artifact (the Nerd Fonts, pkg-based installs like `nx-studio`) has
+nothing to verify and is left alone. A missing bundle is
 repaired with `brew reinstall --cask`, because a plain `brew install --cask`
 refuses a cask Homebrew still believes in.
 

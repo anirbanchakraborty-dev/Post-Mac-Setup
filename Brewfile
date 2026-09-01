@@ -94,10 +94,6 @@ brew "zoxide"
 brew "zsh"
 # SystemVerilog developer tools
 brew "chipsalliance/verible/verible"
-# Password manager that keeps all passwords secure behind one password
-cask "1password"
-# Command-line interface for 1Password
-cask "1password-cli"
 # Send any size file between devices
 cask "blip"
 # Anthropic's official Claude AI desktop app
@@ -106,8 +102,6 @@ cask "claude"
 cask "claude-code"
 # Plain-text editor for web pages, program source codes and more
 cask "coteditor"
-# Per-application volume mixer, equalizer, and audio router
-cask "finetune"
 cask "font-jetbrains-mono-nerd-font"
 cask "font-meslo-lg-nerd-font"
 # Free and open-source media player

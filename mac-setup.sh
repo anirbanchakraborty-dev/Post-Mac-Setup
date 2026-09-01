@@ -185,7 +185,7 @@ print_summary() {
         echo "     which zsh     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/zsh"
         echo "     which bash    → should show ${BREW_PREFIX:-/opt/homebrew}/bin/bash"
         echo ""
-        echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} 1Password, Setapp, Tailscale, etc."
+        echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} Setapp, Tailscale, etc."
         echo ""
 
         if ! $NO_LOG && [ -n "${LOG_FILE:-}" ]; then
@@ -293,8 +293,8 @@ batch_install() {
     #
     # So for casks that actually ship an .app, confirm the bundle exists before
     # believing the record. One `brew info --json=v2` covers the whole list.
-    # Casks with no app artifact -- CLI tools like 1password-cli, fonts,
-    # pkg-based installs -- have nothing to check here and are left alone.
+    # Casks with no app artifact -- the Nerd Fonts, pkg-based installs like
+    # nx-studio -- have nothing to check here and are left alone.
     local to_reinstall=()
     if [[ "$kind" == "cask" && ${#claimed[@]} -gt 0 ]] && command -v jq >/dev/null 2>&1; then
         local cask_json app_line token apps found app
@@ -846,15 +846,12 @@ CASKS=(
 
     # Media & audio
     iina                # Media player (free, open-source)
-    finetune            # Per-application volume mixer, equalizer and audio routing
 
     # Terminal
     iterm2              # Terminal emulator
 
     # Networking & security
     tailscale-app       # Mesh VPN (cask renamed from 'tailscale' upstream)
-    1password           # Password manager
-    1password-cli       # 1Password CLI (op command)
 
     # Browser & messaging
     whatsapp            # WhatsApp desktop
