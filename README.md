@@ -71,7 +71,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 ## What Gets Installed
 
-### CLI tools (46 formulae)
+### CLI tools (47 formulae)
 
 | Category | Packages |
 |---|---|
@@ -79,21 +79,22 @@ Two detection details are worth knowing because they are where naive "is it inst
 | Version control | `git`, `git-lfs`, `gh`, `git-filter-repo` |
 | Languages and runtimes | `python@3`, `node`, `pnpm`, `r`, `gcc`, `go`, `rustup` |
 | Python tooling | `uv` |
-| EDA / hardware design | `icarus-verilog`, `yosys`, `sby`, `verilator`, `verible`, `surfer`, `graphviz` |
+| EDA / hardware design | `icarus-verilog`, `yosys`, `sby`, `verilator`, `surfer`, `graphviz` |
 | RISC-V toolchain | `riscv64-elf-gcc`, `dtc` |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils`, `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom`, `hyperfine`, `difftastic` |
+| Media and audio | `ffmpeg`, `espeak-ng` |
 | Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler` |
 | Homebrew TUI | `bbrew` |
 
-`sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
+`sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
 
-### GUI apps and fonts (26 casks)
+### GUI apps and fonts (36 casks)
 
 | Category | Casks |
 |---|---|
 | Editors and IDEs | `visual-studio-code`, `coteditor` |
 | AI | `claude`, `claude-code`, `lm-studio` |
-| Productivity | `microsoft-office`, `setapp`, `obsidian` |
+| Productivity | `microsoft-office`, `setapp`, `obsidian`, `notion` |
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
@@ -104,26 +105,34 @@ Two detection details are worth knowing because they are where naive "is it inst
 | Window management | `loop` |
 | Menu bar | `blip`, `stats`, `thaw` |
 | System maintenance | `pearcleaner`, `purge` |
-| Fonts | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
+| Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
+| Fonts (text and display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 
 `mactex` is the full TeX Live distribution and is by far the largest item in the run. `nx-studio` installs from a `.pkg` and leaves no `.app` artifact, so it is exempt from the on-disk verification above. The two Nerd Fonts are patched fonts, needed for the Powerlevel10k prompt's icons to render.
 
 ### Taps
 
-Two third-party taps, each carrying exactly one package that is not in `homebrew/core` or `homebrew/cask`:
+One third-party tap, carrying exactly one package that is not in `homebrew/core` or `homebrew/cask`:
 
 | Tap | Provides |
 |---|---|
-| `chipsalliance/verible` | `verible` |
 | `jithin-sabu/tap` | `purge` |
 
+There were two until 2026-09-06, and losing the other one is the reason for the check described at the end of this section. `chipsalliance/verible` had been abandoned upstream since July 2025, and its formula still called `depends_on macos: :catalina`, a method Homebrew 6.x removed. **Homebrew does not load formulae lazily** — working out what is installable evaluates every formula in every tap on the machine — so that one dead definition made unrelated commands fail outright, including `brew install --cask notion`. An abandoned tap is not dormant. It is a fault waiting for the next unrelated install. Verible moved to a direct download; see below.
+
 Each tap is **trusted** with `brew trust --tap` immediately after it is added. Recent Homebrew sets `$HOMEBREW_REQUIRE_TAP_TRUST` by default and refuses to load formulae from untrusted third-party taps: it prints a skip notice and leaves the package uninstalled, so without this the two packages above silently never arrive and `brew upgrade` ignores them too. Trust is granted at tap level rather than per formula, because the same setting also gates the commands that evaluate every formula and cask, which is what the `brew bundle dump` in the cleanup step does. The step is guarded on `brew trust` existing at all, since older Homebrew lacks the subcommand and does not enforce trust either way. Afterwards each tapped package is resolved with `brew info` as a verification pass, so a typo in a tap name or a tap that failed to clone surfaces as a reported failure instead of a package that quietly never installs.
+
+Finally, the script **reports every third-party tap on the machine that it does not manage**: it walks `brew tap`, skips anything under `homebrew/`, and warns for each remaining tap missing from `TAPS`. It only reads, so it runs under `--dry-run` too. A script that only ever *adds* taps is blind to the ones it did not add, and that blindness is how a second stale tap went unnoticed on the reference machine — tapped at some point, nothing installed from it, emitting a deprecation warning on every `brew` command. The check warns rather than untapping, because removing a tap can orphan a package that is genuinely in use, and that call belongs to a person.
 
 ### Outside Homebrew
 
 Two globals are installed through other package managers: a schematic renderer for Yosys JSON netlists via `npm install -g`, and a knowledge-graph builder CLI via `uv tool install`. Both are skipped when already present, and both degrade gracefully — if `npm` or `uv` is missing, the step warns, records the item in the failure summary, and continues.
 
-One application is installed straight from the publisher's `.pkg` rather than through a cask: **Microsoft Edge**, gated behind `--skip-extras`. That deserves an explanation, because the obvious approach is wrong on Apple Silicon. Microsoft's `fwlink/?linkid=2069148` redirector advertises itself as the canonical "latest" Edge package and serves an x86_64-only build, so a Mac that installs from it ends up running Edge under Rosetta with nothing to indicate anything went wrong. The script therefore takes both the version string and the download URL from Microsoft's EdgeUpdates JSON API (`https://edgeupdates.microsoft.com/api/products`, the Stable / MacOS / universal artifact), so the two cannot disagree. On an `arm64` host, if that API is unreachable or cannot name a universal build, Edge is **skipped and reported** rather than installed from the fallback: a browser missing until the next run is a smaller problem than a browser silently emulated. Intel hosts have no such hazard, so the redirector stays a fine fallback there. The installed bundle is described as `<version> (<arch>)` so a single comparison catches both a stale version and a wrong-architecture build, and the architecture is read with `lipo -archs` rather than `file` — `file`'s output for a universal binary spans three lines, one of which ends in the exact string `Mach-O 64-bit executable x86_64` and would make a correct universal build look Intel-only, forcing a pointless reinstall on every run. After installing, the bundle is re-read and a non-native result is recorded as a failure.
+Two packages are installed straight from the publisher rather than through Homebrew, both gated behind `--skip-extras`.
+
+**Verible** is a SystemVerilog parser, linter and formatter, and it is here because it has no working Homebrew source at all — not in `homebrew/core`, and the only tap that ever carried it is the dead one described above. Pinning an older Homebrew or hand-patching the formula would both be undone by the next `brew update`, so the script takes the project's own release instead: it asks the GitHub releases API for the latest tag and its `*macOS.tar.gz` asset, unpacks it, and copies the binaries into `~/.local/bin` with `install -m 0755`. No `sudo` is needed, which is why that destination rather than `/usr/local/bin`, and `~/.local/bin` is added to `PATH` in the managed shell block. Removing the old Homebrew build and untapping the dead tap happen in the same step, both idempotent. The helper behind it, `install_binaries_from_tarball`, mirrors the `.pkg` helper's contract exactly: matching version strings skip, differing ones reinstall, and on an `arm64` host the installed binary is read back with `lipo -archs` and a non-native build is warned about and recorded as a failure. On the reference machine the official tarball turned out to be roughly eighteen months newer than the build the tap had pinned.
+
+**Microsoft Edge** comes as a publisher `.pkg`. That deserves an explanation, because the obvious approach is wrong on Apple Silicon. Microsoft's `fwlink/?linkid=2069148` redirector advertises itself as the canonical "latest" Edge package and serves an x86_64-only build, so a Mac that installs from it ends up running Edge under Rosetta with nothing to indicate anything went wrong. The script therefore takes both the version string and the download URL from Microsoft's EdgeUpdates JSON API (`https://edgeupdates.microsoft.com/api/products`, the Stable / MacOS / universal artifact), so the two cannot disagree. On an `arm64` host, if that API is unreachable or cannot name a universal build, Edge is **skipped and reported** rather than installed from the fallback: a browser missing until the next run is a smaller problem than a browser silently emulated. Intel hosts have no such hazard, so the redirector stays a fine fallback there. The installed bundle is described as `<version> (<arch>)` so a single comparison catches both a stale version and a wrong-architecture build, and the architecture is read with `lipo -archs` rather than `file` — `file`'s output for a universal binary spans three lines, one of which ends in the exact string `Mach-O 64-bit executable x86_64` and would make a correct universal build look Intel-only, forcing a pointless reinstall on every run. After installing, the bundle is re-read and a non-native result is recorded as a failure.
 
 ### A note on batching
 
@@ -178,7 +187,7 @@ Skippable in full with `--skip-shell`. Every managed block is wrapped in `### BE
 
 `~/.zshrc` alone covers interactive shells only, which means a script, `zsh -c`, a cron job, and `ssh host cmd` all get the system `PATH` while your terminal gets the Homebrew one — the same command resolving to a different compiler depending on how it was started. Sourcing from `~/.zshenv` fixes that for every shell. The third copy in `~/.zprofile` is not redundancy: `/etc/zprofile` runs `/usr/libexec/path_helper` for every *login* shell, which rebuilds `PATH` with the system directories near the front and undoes what `~/.zshenv` just did, and zsh reads `/etc/zprofile` before `~/.zprofile`. Re-sourcing is cheap and idempotent because the file declares `typeset -U path PATH` and guards its Homebrew block on `HOMEBREW_PREFIX`.
 
-**PATH policy.** Homebrew `bin` and `sbin` go ahead of the system directories, along with GNU coreutils (so `ls` is GNU `ls`, not `gls`), Homebrew `curl` (keg-only, so without an explicit entry `/usr/bin/curl` keeps winning), Homebrew LLVM, the `rustup` keg plus `~/.cargo/bin`, `$GOPATH/bin`, and `/Library/TeX/texbin` when MacTeX is present.
+**PATH policy.** Homebrew `bin` and `sbin` go ahead of the system directories, along with GNU coreutils (so `ls` is GNU `ls`, not `gls`), Homebrew `curl` (keg-only, so without an explicit entry `/usr/bin/curl` keeps winning), Homebrew LLVM, the `rustup` keg plus `~/.cargo/bin`, `$GOPATH/bin`, `/Library/TeX/texbin` when MacTeX is present, and `~/.local/bin`, which is where the direct-download binaries land.
 
 Two consequences of that are worth knowing before they surprise you. First, `clang` and `clang++` resolve to Homebrew LLVM, which defaults to `gnu++17` where Apple's `clang++` defaults to `gnu++14`; a handful of ordinary pre-C++17 constructs compile with `/usr/bin/clang++` and fail here, so pin `-std=gnu++14` when that bites. It masks in the other direction too — C++17 code that builds on this machine can fail on a stock Mac. Second, `gcc` is installed but is deliberately *not* put ahead of the system compiler, and that asymmetry is intentional. The Homebrew formula builds its drivers with a version suffix, so there is no unversioned `gcc` to link in the first place; a bare `gcc` stays the Apple clang driver at `/usr/bin/gcc`, which is what Python C extensions, `node-gyp`, and anything touching the Apple frameworks assume. Use `gcc-16` and `g++-16`, or set `CC` and `CXX` per project, and do not "fix" this by symlinking `gcc` into the Homebrew prefix — brew clobbers it on the next upgrade and the breakage shows up in unrelated builds whose errors never mention the symlink. Exactly one driver is unversioned, `gfortran`, so plain `gfortran` already is Homebrew GCC.
 
@@ -223,7 +232,7 @@ Post-Mac-Setup/
   Brewfile       generated by the run: a snapshot of installed packages
 ```
 
-Package lists are plain Bash arrays named `TAPS`, `FORMULAE`, and `CASKS`. Adding or removing a package means editing an array, and nothing else.
+Package lists are plain Bash arrays named `TAPS`, `FORMULAE`, and `CASKS`. Adding or removing a package means editing an array, and nothing else. The exception is the direct downloads, which are a few lines each in the extras section rather than an array entry, because each one needs its own way of finding the current version.
 
 ## License and Forking
 

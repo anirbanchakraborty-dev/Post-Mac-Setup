@@ -12,7 +12,7 @@
 # ║          --upgrade       Also run 'brew upgrade' (off by default)    ║
 # ║          --skip-casks    Skip GUI app (cask) installation            ║
 # ║          --skip-formulae Skip CLI tool (formula) installation        ║
-# ║          --skip-extras   Skip direct downloads (Edge, etc.)          ║
+# ║          --skip-extras   Skip direct downloads (verible, Edge)          ║
 # ║          --skip-github   Skip GitHub CLI auth + git credential setup ║
 # ║          --skip-macos    Skip macOS .DS_Store defaults               ║
 # ║          --skip-shell    Skip shell config (.zshrc, etc.)            ║
@@ -237,7 +237,7 @@ batch_install() {
 
     local to_install=() claimed=()
     for item in "${items[@]}"; do
-        # Strip any tap prefix (e.g. chipsalliance/verible/verible -> verible)
+        # Strip any tap prefix (e.g. jithin-sabu/tap/purge -> purge)
         local short="${item##*/}"
         if grep -qFx -- "$short" <<<"$installed_list"; then
             claimed+=("$item")
@@ -491,6 +491,88 @@ install_pkg_from_url() {
     rm -rf "$tmpdir"
 }
 
+# Install prebuilt binaries from a project's own release tarball into
+# ~/.local/bin. This is for tools with no working Homebrew source at all -
+# not merely no cask, but no formula that still loads.
+#
+# Usage: install_binaries_from_tarball "<label>" "<url>" "<probe>" [installed_ver] [latest_ver]
+#
+# Same skip/upgrade contract as install_pkg_from_url: equal versions skip,
+# differing versions reinstall over the top, and an empty version on either
+# side degrades to "install only if <probe> is missing".
+install_binaries_from_tarball() {
+    local label="$1"
+    local url="$2"
+    local probe="$3"
+    local installed_ver="${4:-}"
+    local latest_ver="${5:-}"
+    local dest="$HOME/.local/bin"
+
+    if [ -x "$dest/$probe" ]; then
+        if [ -n "$installed_ver" ] && [ -n "$latest_ver" ]; then
+            if [ "$installed_ver" = "$latest_ver" ]; then
+                success "$label (already installed, $installed_ver up to date)"
+                (( SKIPPED_COUNT++ )) || true
+                return
+            fi
+            info "$label installed: $installed_ver, latest: $latest_ver - upgrading"
+        else
+            success "$label (already installed)"
+            (( SKIPPED_COUNT++ )) || true
+            return
+        fi
+    fi
+
+    if $DRY_RUN; then
+        info "[DRY RUN] Would download $label from $url and install its binaries into $dest"
+        return
+    fi
+
+    local tmpdir bindir f n=0
+    tmpdir="$(mktemp -d)"
+    if ! curl -fsSL -o "$tmpdir/release.tar.gz" "$url"; then
+        warn "Failed to download $label from $url"
+        FAILED_ITEMS+=("$label (download)")
+        rm -rf "$tmpdir"; return
+    fi
+    if ! tar xzf "$tmpdir/release.tar.gz" -C "$tmpdir" 2>/dev/null; then
+        warn "Failed to unpack the $label tarball"
+        FAILED_ITEMS+=("$label (unpack)")
+        rm -rf "$tmpdir"; return
+    fi
+
+    # Release tarballs normally unpack to a single versioned directory with a
+    # bin/ inside. Find that bin/ rather than assuming its name: the name
+    # carries the version, so it changes with every release.
+    bindir="$(find "$tmpdir" -type d -name bin -print -quit 2>/dev/null || true)"
+    [ -n "$bindir" ] || bindir="$tmpdir"
+
+    mkdir -p "$dest"
+    for f in "$bindir"/*; do
+        [ -f "$f" ] && [ -x "$f" ] || continue
+        install -m 0755 "$f" "$dest/" && n=$((n+1))
+    done
+    rm -rf "$tmpdir"
+
+    if [ "$n" -eq 0 ] || [ ! -x "$dest/$probe" ]; then
+        warn "Unpacked $label but found no executable named $probe to install"
+        FAILED_ITEMS+=("$label (tarball held nothing usable)")
+        return
+    fi
+
+    success "$label ($n binaries into $dest)"
+    (( INSTALLED_COUNT++ )) || true
+
+    # This function exists because a packaged build was unusable, so do not
+    # then trust that the tarball holds what its filename implies. Verible
+    # ships one asset named "macOS" with no architecture in the name at all,
+    # which is exactly the shape of the Edge fwlink trap below.
+    if [ "$HOST_ARCH" = "arm64" ] && ! lipo -archs "$dest/$probe" 2>/dev/null | grep -q 'arm64'; then
+        warn "$label on disk is not a native arm64 build - it will run under Rosetta"
+        FAILED_ITEMS+=("$label (installed build is not native arm64)")
+    fi
+}
+
 # ─────────────────────────────────────────────────────────────────────
 # LOGGING - tee all output to a timestamped log file
 # Uses ~/Library/Logs (the macOS-native log location) so logs survive
@@ -639,7 +721,6 @@ section "Adding Taps"
 # counted as newly installed in the summary. (The -i flag covers the casing;
 # the "homebrew-" prefix is what actually broke it.)
 TAPS=(
-    "chipsalliance/verible"       # Verible - only source, not in homebrew/core
     "jithin-sabu/tap"             # Purge - only source, not in homebrew/cask
 )
 
@@ -647,9 +728,11 @@ TAPS=(
 # $HOMEBREW_REQUIRE_TAP_TRUST by default and refuses to load formulae from
 # untrusted third-party taps - it prints "Skipping <tap> because it is not
 # trusted" and silently leaves the package uninstalled, so without this
-# `brew install verible` below is a no-op and `brew upgrade` skips it too.
-# (bbrew was the other formula this protected until it graduated to
-# homebrew/core; its tap was dropped 2026-08-21.) Trust is recorded in ~/.homebrew/trust.json
+# `brew install --cask purge` below is a no-op and `brew upgrade` skips it too.
+# Two taps have been dropped from this list rather than repaired: bbrew's, once
+# it graduated to homebrew/core (2026-08-21), and chipsalliance/verible's, once
+# its formula stopped loading at all (2026-09-06 - see EXTRAS, where verible now
+# comes from). Trust is recorded in ~/.homebrew/trust.json
 # (or $XDG_CONFIG_HOME/homebrew/trust.json when that env var is set).
 #
 # Trust is granted at TAP level rather than per-formula. Per-formula trust is
@@ -665,7 +748,6 @@ TAPS=(
 # resolution check below tries both. Keeping one list means a new tap cannot be
 # added without also proving it resolves.
 TRUST_FORMULAE=(
-    "chipsalliance/verible/verible"   # Verible (from chipsalliance/verible) - formula
     "jithin-sabu/tap/purge"           # Purge (from jithin-sabu/tap) - CASK, not a formula
 )
 
@@ -728,6 +810,44 @@ else
     fi
 fi
 
+# Report third-party taps this script does not manage.
+#
+# Added 2026-09-06, after two unmanaged taps were found on the reference Mac.
+# One of them, chipsalliance/verible, had gone dead upstream and was breaking
+# every `brew install` on the machine with `Error: Failed to import`; the
+# other, emrul/portal, was tapped for a cask that was never installed and only
+# printed a `postflight is deprecated` warning on each run. Neither was
+# visible to this script, because it only ever looked at taps it added itself.
+#
+# A tapped repository is not inert. Homebrew loads its formulae whenever it
+# enumerates packages, so an abandoned tap becomes a fault in every later brew
+# command, however unrelated. That makes an undeclared tap worth reporting.
+#
+# This only reports. Tapping something by hand is a legitimate thing to do and
+# the script has no business untapping it - but it should say so, because the
+# alternative is finding out through an error message about a formula you did
+# not know you had.
+#
+# This check reads and never writes, so it runs under --dry-run too: a dry run
+# is the cheapest place to be told about a tap that is about to break things.
+UNMANAGED_TAPS=()
+while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    case "$t" in homebrew/*) continue ;; esac
+    for known in "${TAPS[@]}"; do
+        [ "$t" = "$known" ] && continue 2
+    done
+    UNMANAGED_TAPS+=("$t")
+done < <(brew tap 2>/dev/null || true)
+
+if [ "${#UNMANAGED_TAPS[@]}" -gt 0 ]; then
+    for t in "${UNMANAGED_TAPS[@]}"; do
+        warn "tap not managed by this script: $t (brew untap $t if you no longer need it)"
+    done
+else
+    success "no unmanaged third-party taps"
+fi
+
 # ─────────────────────────────────────────────────────────────────────
 # FORMULAE (CLI tools - brew install)
 # ─────────────────────────────────────────────────────────────────────
@@ -761,13 +881,16 @@ FORMULAE=(
     yosys               # Verilog RTL synthesis
     sby                 # SymbiYosys - formal verification front-end for Yosys
     verilator           # Verilog/SystemVerilog simulator
-    verible             # SystemVerilog parser, linter, formatter (from tap)
     surfer              # Waveform viewer (VCD, FST, GHW)
     graphviz            # Graph visualization (dot, neato, etc.)
 
     # RISC-V toolchain (for the CPU-design-from-scratch project)
     riscv64-elf-gcc     # Bare-metal RISC-V cross compiler (riscv64-elf target)
     dtc                 # Device tree compiler
+
+    # Media & audio (Manim narration pipeline - see Research-Projects/)
+    ffmpeg              # Audio/video transcode and mux
+    espeak-ng           # Speech synthesiser, used for narration scratch tracks
 
     # Terminal utilities
     tree                # Directory listing as tree
@@ -804,6 +927,13 @@ FORMULAE=(
     # `brew bundle dump` and looks like undeclared drift on every audit - it
     # is not. Same call was made in f0c9a03; see also gcc, which IS listed but
     # arrives transitively via r/openblas.
+    #
+    # Deliberately NOT listed for the same reason: pkgconf. It is a BUILD
+    # dependency of 55 of the formulae above - measured 2026-09-06 with
+    # `brew uses --installed --include-build pkgconf` - so it is on the machine
+    # before this array is ever read. It shows as installed_on_request and as a
+    # `brew leaves` entry, which is what makes it look like drift; declaring it
+    # would only add a line that changes nothing about what gets installed.
 )
 
 if $SKIP_FORMULAE; then
@@ -831,6 +961,7 @@ CASKS=(
     microsoft-office    # Microsoft 365 (Word, Excel, PowerPoint, etc.)
     setapp              # Setapp app subscription platform
     obsidian            # Markdown-based knowledge base / note-taking app
+    notion              # Notion workspace client
 
     # LaTeX
     mactex              # Full TeX Live distribution (large ~5 GB download)
@@ -871,6 +1002,23 @@ CASKS=(
     # Fonts (Nerd Font patched - needed for Powerlevel10k icons)
     font-meslo-lg-nerd-font
     font-jetbrains-mono-nerd-font
+
+    # Fonts (text and display faces used in design work). Only two of these are
+    # referenced by a build in this hub: font-inter is the website's body face
+    # (291 references under its src/, measured 2026-09-06) and font-caveat
+    # appears once. The rest are display and handwriting faces that are picked
+    # by hand in Inkscape and in slide decks, so nothing will fail if one is
+    # missing - they are listed because a new Mac should come up with the same
+    # menu the old one had, not because a build resolves them.
+    font-inter
+    font-poppins
+    font-archivo
+    font-archivo-black
+    font-anton
+    font-bebas-neue
+    font-caveat
+    font-patrick-hand
+    font-architects-daughter
 )
 
 if $SKIP_CASKS; then
@@ -943,16 +1091,99 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────────
-# EXTRAS - Direct downloads (apps installed via vendor .pkg, not Homebrew)
-# Use this for apps where the publisher's installer is preferred over a
-# Homebrew cask (e.g. Microsoft Edge, where the cask just wraps the same
-# .pkg but adds an extra layer of staleness).
+# EXTRAS - Direct downloads (installed from the publisher, not Homebrew)
+# Two shapes live here. A vendor .pkg run through `installer` (Microsoft
+# Edge, where the cask just wraps the same .pkg but adds an extra layer of
+# staleness), and a release tarball whose binaries are copied into
+# ~/.local/bin (Verible, which has no working Homebrew source at all).
 # ─────────────────────────────────────────────────────────────────────
 section "Installing Extras (Direct Downloads)"
 
 if $SKIP_EXTRAS; then
     warn "Skipping extras (--skip-extras)"
 else
+    HOST_ARCH="$(uname -m)"
+
+    # Verible - SystemVerilog parser, linter and formatter. It is an EXTRA
+    # rather than a formula because it has no working Homebrew source of any
+    # kind. The only tap that ever carried it, chipsalliance/verible, is dead:
+    # last commit 2025-07-14, and its formula still calls
+    # `depends_on macos: :catalina`, which Homebrew 6.x disabled outright.
+    #
+    # The consequence was worse than one package failing to install. Homebrew
+    # loads every tapped formula whenever it enumerates them, so the dead tap
+    # produced `Error: Failed to import` on EVERY brew command that touches the
+    # formula list - including `brew install --cask` for something completely
+    # unrelated. An abandoned tap is not a dormant dependency; it is a standing
+    # fault in every later brew invocation. That is why it was dropped from
+    # TAPS on 2026-09-06 rather than pinned, patched or version-locked.
+    #
+    # The upstream release is also far newer than that tap could build:
+    # v0.0-4163 (2026-09-01) against the v0.0-3946 (2025-02-17) the formula
+    # pinned, and it is native arm64 - verified after install, not assumed.
+    VERIBLE_PROBE="verible-verilog-lint"
+    VERIBLE_API="https://api.github.com/repos/chipsalliance/verible/releases/latest"
+    VERIBLE_INSTALLED=""
+    VERIBLE_LATEST=""
+    VERIBLE_URL=""
+    VERIBLE_JSON=""
+
+    # A Mac that ran an older revision of this script still has verible under
+    # $BREW_PREFIX/bin, which precedes ~/.local/bin on PATH and would shadow
+    # whatever lands below. Retire the Homebrew copy and the tap first, so the
+    # migration is idempotent instead of half-applied.
+    if brew list --formula 2>/dev/null | grep -qx verible; then
+        if $DRY_RUN; then
+            info "[DRY RUN] Would uninstall the Homebrew verible (superseded by the release tarball)"
+        else
+            info "Migrating verible off the dead chipsalliance tap"
+            brew uninstall --force verible >/dev/null 2>&1 || true
+        fi
+    fi
+    if brew tap 2>/dev/null | grep -qix "chipsalliance/verible"; then
+        if $DRY_RUN; then
+            info "[DRY RUN] Would untap chipsalliance/verible (dead upstream)"
+        else
+            brew untap chipsalliance/verible >/dev/null 2>&1 \
+                && success "untapped chipsalliance/verible (dead upstream)" \
+                || warn "Could not untap chipsalliance/verible"
+        fi
+    fi
+
+    if command -v "$VERIBLE_PROBE" >/dev/null 2>&1; then
+        VERIBLE_INSTALLED="$("$VERIBLE_PROBE" --version 2>/dev/null | awk '/^Version/{print $2; exit}')"
+    fi
+
+    if command -v jq >/dev/null 2>&1; then
+        VERIBLE_JSON="$(curl -fsSL --max-time 20 "$VERIBLE_API" 2>/dev/null || true)"
+        if [ -n "$VERIBLE_JSON" ]; then
+            VERIBLE_LATEST="$(printf '%s' "$VERIBLE_JSON" | jq -r '.tag_name // empty' 2>/dev/null || true)"
+            # The macOS asset is the only one with no architecture in its name;
+            # the Linux ones are split arm64/x86_64. Match on the suffix rather
+            # than the full filename, which carries the version.
+            VERIBLE_URL="$(printf '%s' "$VERIBLE_JSON" \
+                | jq -r '.assets[] | select(.name | endswith("macOS.tar.gz")) | .browser_download_url' 2>/dev/null \
+                | head -1 || true)"
+        fi
+    else
+        warn "jq not available - cannot query the verible release API"
+    fi
+
+    if [ -n "$VERIBLE_URL" ]; then
+        install_binaries_from_tarball \
+            "Verible" \
+            "$VERIBLE_URL" \
+            "$VERIBLE_PROBE" \
+            "$VERIBLE_INSTALLED" \
+            "$VERIBLE_LATEST"
+    elif [ -n "$VERIBLE_INSTALLED" ]; then
+        info "Could not reach the verible release API - keeping the installed $VERIBLE_INSTALLED"
+        (( SKIPPED_COUNT++ )) || true
+    else
+        warn "Could not resolve a verible macOS release asset - verible not installed"
+        FAILED_ITEMS+=("Verible (no macOS release asset resolved)")
+    fi
+
     # Microsoft Edge - fetched from Microsoft's EdgeUpdates JSON API, which
     # is the only source here that names the architecture it is handing you.
     # The fwlink redirector (linkid=2069148) advertises itself as the
@@ -971,7 +1202,6 @@ else
     EDGE_INSTALLED=""
     EDGE_LATEST=""
     EDGE_URL=""
-    HOST_ARCH="$(uname -m)"
 
     # Describe what is on disk as "<version> (<arch>)" so one string compare
     # in install_pkg_from_url catches BOTH a stale version and a
@@ -1590,7 +1820,16 @@ export PATH="$GOPATH/bin:$PATH"
 # MacTeX
 if [[ -d "/Library/TeX/texbin" ]]; then
   export PATH="/Library/TeX/texbin:$PATH"
-fi'
+fi
+
+# User-local binaries. Holds tools installed from a project release tarball
+# rather than Homebrew, because no working formula exists for them - verible
+# is the one this was added for; see the EXTRAS section of mac-setup.sh. It is
+# prepended, so a tool here beats a Homebrew package of the same name. That is
+# deliberate: nothing lands here unless Homebrew could not supply it.
+# NOTE: keep this comment free of apostrophes - the whole block is a
+# single-quoted bash string and one apostrophe ends it.
+export PATH="$HOME/.local/bin:$PATH"'
 
 inject_block "$ZSH_PATHS" "EDITOR-CONFIG" \
 '# Default editor

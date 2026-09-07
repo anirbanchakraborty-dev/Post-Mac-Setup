@@ -32,8 +32,11 @@ is actually on the machine rather than what the package lists say should be.
 7. **uv tool globals** — `graphifyy` via `uv tool install` (the PyPI package is
    `graphifyy` with a double y; the command it installs is `graphify`), skipped
    when it is already in `uv tool list`. Depends on `uv` from the formulae step.
-8. **Extras (direct downloads)** — vendor `.pkg` installers fetched straight from
-   the publisher, currently just Microsoft Edge. Driven by `install_pkg_from_url`.
+8. **Extras (direct downloads)** — software fetched straight from the publisher
+   rather than through Homebrew, in two shapes: a vendor `.pkg` run through
+   `installer` (Microsoft Edge, via `install_pkg_from_url`), and a release
+   tarball whose binaries are copied into `~/.local/bin` (Verible, via
+   `install_binaries_from_tarball`).
 9. **Post-install** — Homebrew bash and zsh into `/etc/shells` and `chsh` to the
    Homebrew zsh, `git lfs install`, interactive Git identity plus non-clobbering
    defaults, an optional GitHub CLI step, the Rust toolchain, fzf key bindings, a
@@ -62,7 +65,16 @@ Post-Mac-Setup/
 
 The cleanup step writes a `Brewfile` into this same directory (not `$HOME`, not a
 temp dir), so a snapshot of the machine's actual Homebrew state sits beside the
-declared lists and the two can be diffed.
+declared lists and the two can be diffed. It runs `brew bundle dump --force`.
+**Never add `--describe`** — Homebrew 6.x disabled that switch outright, and
+descriptions are emitted by default now.
+
+Diff the snapshot against the arrays in **both** directions. A package the arrays
+declare and the machine lacks is the obvious case; a package the machine carries
+and the arrays do not is the one that gets missed. And Homebrew's own record is
+not the last word: a cask can sit in the Caskroom marked "Installed (on request)"
+with no application anywhere on disk, so when the dump surprises you, check
+`/Applications`, `~/Applications` and `pkgutil --pkgs` before adding an entry.
 
 ## CLI flags
 
@@ -90,8 +102,20 @@ They are the authoritative lists; adding a package means editing an array.
 
 | Tap | Why |
 |---|---|
-| `chipsalliance/verible` | Verible — only source, not in homebrew/core |
 | `jithin-sabu/tap` | Purge — only source, not in homebrew/cask |
+
+`chipsalliance/verible` was here until 2026-09-06 and is gone for a reason worth
+carrying. Homebrew evaluates every formula in every tap when it works out what is
+installable, so that tap's formula calling `depends_on macos: :catalina` — removed
+in Homebrew 6.x — made unrelated commands fail outright. **An abandoned tap is a
+standing fault, not a dormant one.** The tap is dead upstream (last commit
+2025-07-14) and Verible is not in `homebrew/core`, so Verible moved to the extras
+section and installs from the project's own release tarball. Do not re-add the tap.
+
+Because of that, every run now **reports third-party taps the script does not
+manage**: it walks `brew tap`, skips `homebrew/*`, and warns for each tap absent
+from `TAPS`. It only reads, so it runs under `--dry-run` too, and it warns rather
+than untapping, since removing a tap can orphan an installed package.
 
 ### Formulae
 
@@ -101,9 +125,10 @@ They are the authoritative lists; adding a package means editing an array.
 | Version control | `git` (replaces the system git), `git-lfs`, `gh` (GitHub CLI), `git-filter-repo` (rewrite history, purge files, rewrite authors) |
 | Languages & runtimes | `python@3` (replaces the system python), `node` (includes npm), `pnpm`, `r`, `gcc` (C, C++, Fortran), `go`, `rustup` (includes cargo, rustc) |
 | Python tooling | `uv` (fast Python package manager) |
-| EDA / hardware design | `icarus-verilog`, `yosys`, `sby` (SymbiYosys, the formal-verification front end for Yosys), `verilator`, `verible` (from the tap above), `surfer` (waveform viewer for VCD, FST, GHW), `graphviz` |
+| EDA / hardware design | `icarus-verilog`, `yosys`, `sby` (SymbiYosys, the formal-verification front end for Yosys), `verilator`, `surfer` (waveform viewer for VCD, FST, GHW), `graphviz` |
 | RISC-V toolchain | `riscv64-elf-gcc` (bare-metal cross compiler), `dtc` (device tree compiler) |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils` (GNU `gls`, `gdate`, …), `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom` (the `btm` command), `hyperfine`, `difftastic` |
+| Media & audio | `ffmpeg` (transcode and mux), `espeak-ng` (speech synthesiser for narration scratch tracks) |
 | Build tools | `cmake`, `llvm`, `pandoc`, `plantuml` (uses graphviz), `poppler` (`pdftotext`, `pdfinfo`, `pdftoppm`, `pdfimages`) |
 | Homebrew TUI | `bbrew` (Bold Brew, now in homebrew/core) |
 
@@ -124,7 +149,7 @@ it also arrives transitively via `r` and `openblas`.)
 |---|---|
 | Editors & IDEs | `visual-studio-code`, `coteditor` |
 | AI | `claude` (desktop app), `claude-code` (terminal CLI), `lm-studio` (run local models offline) |
-| Productivity | `microsoft-office`, `setapp`, `obsidian` |
+| Productivity | `microsoft-office`, `setapp`, `obsidian`, `notion` |
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
@@ -135,7 +160,8 @@ it also arrives transitively via `r` and `openblas`.)
 | Window management | `loop` |
 | Menu bar | `blip`, `stats`, `thaw` |
 | System maintenance | `pearcleaner`, `purge` (from `jithin-sabu/tap`) |
-| Fonts | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
+| Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
+| Fonts (text & display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 
 The two Nerd Fonts are not decoration: Powerlevel10k's icons need a patched font,
 and the summary at the end tells the user to point their terminal at one of them.
@@ -215,7 +241,7 @@ anyway.
 **Taps are trusted, and the trust is verified.** Recent Homebrew sets
 `$HOMEBREW_REQUIRE_TAP_TRUST` by default and silently skips formulae from
 untrusted third-party taps, printing "Skipping … because it is not trusted" and
-leaving the package uninstalled, so `brew install verible` becomes a no-op and
+leaving the package uninstalled, so `brew install purge` becomes a no-op and
 `brew upgrade` skips it too. Each tap is therefore trusted with
 `brew trust --tap` right after tapping. Trust is granted at *tap* level rather
 than per-formula because the same setting also gates the commands that evaluate
@@ -409,7 +435,7 @@ the string** and breaks the script in a way whose error message points somewhere
 else entirely. Several blocks carry a `NOTE:` line saying so. Write "does not"
 rather than "doesn't" inside them.
 
-The three helpers are:
+The four helpers are:
 
 - **`run cmd args…`** — executes the command, or prints `[DRY RUN] Would run: …`
   under `--dry-run`. No shell eval; arguments are preserved. Use it for any
@@ -425,14 +451,27 @@ The three helpers are:
   either is empty (the latest could not be fetched, say) it falls back to
   "skip if the app exists". Version *detection* is left to the call site, which
   is where the vendor-specific knowledge belongs.
+- **`install_binaries_from_tarball <label> <url> <probe> [installed_ver] [latest_ver]`**
+  — downloads a release tarball, finds the `bin/` directory inside it with
+  `find … -type d -name bin -print -quit` so the archive's top-level folder name
+  does not matter, and copies every executable into `~/.local/bin` with
+  `install -m 0755`. No `sudo`, which is why that destination. The skip and
+  upgrade contract is identical to the `.pkg` helper's. `<probe>` is one binary
+  from the set, used both for the presence check and for the architecture check
+  afterwards: on an `arm64` host the installed file is read with **`lipo -archs`**
+  and a build without `arm64` is warned about and recorded in `FAILED_ITEMS`.
+  Use `lipo`, never `file` — the reason is under the Edge notes above.
 
 When adding a new state-changing command, wrap it in `run`, gate it on
 `$DRY_RUN`, or guard it with `|| true` so a failure lands in `FAILED_ITEMS`
 rather than killing the script. `defaults write` commands go in the macOS System
 Defaults section. New dotfile-writing logic must live inside the
 `if $DRY_RUN … else … fi` block in the shell-config section, or a dry run will
-mutate the user's home directory. New non-Homebrew app installs go in the Extras
-section, gated on `$SKIP_EXTRAS` and calling `install_pkg_from_url`.
+mutate the user's home directory. New non-Homebrew installs go in the Extras
+section, gated on `$SKIP_EXTRAS`, calling `install_pkg_from_url` for a vendor
+`.pkg` or `install_binaries_from_tarball` for a release archive of plain
+binaries. `HOST_ARCH` is set once at the top of that section's `else` branch;
+read it rather than calling `uname -m` again.
 
 ## Before calling a change done
 

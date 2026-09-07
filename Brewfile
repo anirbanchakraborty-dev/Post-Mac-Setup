@@ -1,5 +1,28 @@
-tap "chipsalliance/verible", trusted: true
-tap "jithin-sabu/tap"
+# Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
+# regenerated 2026-09-06. Restore with `brew bundle install`.
+#
+# Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
+# Homebrew 6.x disabled that switch outright, because emitting the one-line
+# descriptions below is now the default behaviour.
+#
+# This file and the FORMULAE / CASKS arrays in mac-setup.sh are close but not
+# identical, and three of the differences are deliberate rather than drift:
+#
+#   gcc, ghostscript  declared by mac-setup.sh, absent here. Both arrive
+#                     transitively - gcc via r and openblas, ghostscript as a
+#                     declared dependency of the mactex cask - so Homebrew no
+#                     longer marks either installed_on_request and a dump does
+#                     not name them.
+#   pkgconf           present here, deliberately not declared by mac-setup.sh.
+#                     It is a build dependency of 55 installed formulae, so it
+#                     is on the machine long before either list is read.
+#
+# Verible is absent from this file on purpose. Its only Homebrew source was
+# the chipsalliance/verible tap, which went dead upstream (last commit
+# 2025-07-14) and whose formula stopped loading under Homebrew 6.x, breaking
+# every brew command on the machine. It is installed from the project's own
+# release tarball now - see the EXTRAS section of mac-setup.sh.
+tap "jithin-sabu/tap", trusted: true
 # Bourne-Again SHell, a UNIX command interpreter
 brew "bash"
 # Clone of cat(1) with syntax highlighting and Git integration
@@ -20,18 +43,18 @@ brew "difftastic"
 brew "dtc"
 # More intuitive version of du in rust
 brew "dust"
+# Speech synthesizer that supports more than hundred languages and accents
+brew "espeak-ng"
 # Modern, maintained replacement for ls
 brew "eza"
 # Simple, fast and user-friendly alternative to find
 brew "fd"
+# Play, record, convert, and stream select audio and video codecs
+brew "ffmpeg"
 # Command-line fuzzy finder written in Go
 brew "fzf"
-# GNU compiler collection
-brew "gcc"
 # GitHub command-line tool
 brew "gh"
-# Interpreter for PostScript and PDF
-brew "ghostscript"
 # Distributed revision control system
 brew "git"
 # Quickly rewrite git repository history
@@ -56,6 +79,8 @@ brew "llvm"
 brew "node"
 # Swiss-army knife of markup format conversion
 brew "pandoc"
+# Package compiler and linker metadata toolkit
+brew "pkgconf"
 # Draw UML diagrams
 brew "plantuml"
 # Fast, disk space efficient package manager
@@ -92,8 +117,6 @@ brew "wget"
 brew "zoxide"
 # UNIX shell (command interpreter)
 brew "zsh"
-# SystemVerilog developer tools
-brew "chipsalliance/verible/verible"
 # Send any size file between devices
 cask "blip"
 # Anthropic's official Claude AI desktop app
@@ -102,8 +125,17 @@ cask "claude"
 cask "claude-code"
 # Plain-text editor for web pages, program source codes and more
 cask "coteditor"
+cask "font-anton"
+cask "font-architects-daughter"
+cask "font-archivo"
+cask "font-archivo-black"
+cask "font-bebas-neue"
+cask "font-caveat"
+cask "font-inter"
 cask "font-jetbrains-mono-nerd-font"
 cask "font-meslo-lg-nerd-font"
+cask "font-patrick-hand"
+cask "font-poppins"
 # Free and open-source media player
 cask "iina"
 # Vector graphics editor
@@ -116,8 +148,11 @@ cask "lm-studio"
 cask "loop"
 # Full TeX Live distribution with GUI applications
 cask "mactex"
+# AI-first productivity assistant for Microsoft 365
 # Office suite
 cask "microsoft-office"
+# App to write, plan, collaborate, and get organised
+cask "notion"
 # Nikon suite for viewing, processing, and editing photos and videos
 cask "nx-studio"
 # Knowledge base that works on top of a local folder of plain text Markdown files
@@ -125,7 +160,7 @@ cask "obsidian"
 # Utility to uninstall apps and remove leftover files from old/uninstalled apps
 cask "pearcleaner"
 # Free up your Mac safely by clearing cache and junk to the Trash
-cask "jithin-sabu/tap/purge", trusted: true
+cask "jithin-sabu/tap/purge"
 # Collection of apps available by subscription
 cask "setapp"
 # PDF reader and note-taking application
@@ -226,5 +261,7 @@ vscode "vitaliymaz.vscode-svg-previewer"
 vscode "xyc.vscode-mdx-preview"
 vscode "yzhang.markdown-all-in-one"
 vscode "zignd.html-css-class-completion"
+go "golang.org/x/tools/gopls"
 uv "graphifyy"
+uv "skillspector", source: "git+https://github.com/NVIDIA/skillspector.git"
 npm "netlistsvg"
