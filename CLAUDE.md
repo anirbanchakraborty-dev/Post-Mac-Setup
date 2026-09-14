@@ -129,7 +129,7 @@ than untapping, since removing a tap can orphan an installed package.
 | RISC-V toolchain | `riscv64-elf-gcc` (bare-metal cross compiler), `dtc` (device tree compiler) |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils` (GNU `gls`, `gdate`, …), `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom` (the `btm` command), `hyperfine`, `difftastic` |
 | Media & audio | `ffmpeg` (transcode and mux), `espeak-ng` (speech synthesiser for narration scratch tracks) |
-| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml` (uses graphviz), `poppler` (`pdftotext`, `pdfinfo`, `pdftoppm`, `pdfimages`) |
+| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml` (uses graphviz), `poppler` (`pdftotext`, `pdfinfo`, `pdftoppm`, `pdfimages`), `pkgconf` (the `pkg-config` command) |
 | Homebrew TUI | `bbrew` (Bold Brew, now in homebrew/core) |
 
 `tlrc` is there because the `tldr` formula was disabled upstream on 2025-10-24;
@@ -143,6 +143,12 @@ exported `Brewfile`, which makes it look like an undeclared package on every
 audit. It is not. Do not add it. (Compare `gcc`, which *is* declared even though
 it also arrives transitively via `r` and `openblas`.)
 
+`pkgconf` was left out on the same reasoning until 2026-09-13, and for it the
+reasoning was wrong. It is a build dependency of many of the formulae above, but
+nothing installed needs it at run time (`brew uses --installed pkgconf` is
+empty), and Homebrew installs prebuilt bottles without their build dependencies,
+so a bare machine would never get it. It is declared now.
+
 ### Casks
 
 | Category | Packages |
@@ -155,11 +161,11 @@ it also arrives transitively via `r` and `openblas`.)
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
 | Media & audio | `iina` |
 | Terminal | `iterm2` |
-| Networking & security | `tailscale-app` (renamed upstream from `tailscale`) |
+| Networking & security | `tailscale-app` (renamed upstream from `tailscale`), `surfshark` (commercial VPN client) |
 | Browser & messaging | `whatsapp` |
 | Window management | `loop` |
 | Menu bar | `blip`, `stats`, `thaw` |
-| System maintenance | `pearcleaner`, `purge` (from `jithin-sabu/tap`) |
+| System maintenance | `pearcleaner`, `purge` (from `jithin-sabu/tap`), `keyboardcleantool` (blocks keyboard input while you clean the keys) |
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text & display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 

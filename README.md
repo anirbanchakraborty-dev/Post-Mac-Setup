@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 46 command-line tools, 26 GUI apps, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 48 command-line tools, 27 GUI apps and 11 fonts, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -71,7 +71,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 ## What Gets Installed
 
-### CLI tools (47 formulae)
+### CLI tools (48 formulae)
 
 | Category | Packages |
 |---|---|
@@ -83,12 +83,12 @@ Two detection details are worth knowing because they are where naive "is it inst
 | RISC-V toolchain | `riscv64-elf-gcc`, `dtc` |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils`, `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom`, `hyperfine`, `difftastic` |
 | Media and audio | `ffmpeg`, `espeak-ng` |
-| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler` |
+| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler`, `pkgconf` |
 | Homebrew TUI | `bbrew` |
 
-`sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
+`sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, `pkgconf` supplies the `pkg-config` command that build scripts use to find C libraries, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
 
-### GUI apps and fonts (36 casks)
+### GUI apps and fonts (38 casks)
 
 | Category | Casks |
 |---|---|
@@ -100,11 +100,11 @@ Two detection details are worth knowing because they are where naive "is it inst
 | Photography | `nx-studio` |
 | Media and audio | `iina` |
 | Terminal | `iterm2` |
-| Networking and security | `tailscale-app` |
+| Networking and security | `tailscale-app`, `surfshark` |
 | Browser and messaging | `whatsapp` |
 | Window management | `loop` |
 | Menu bar | `blip`, `stats`, `thaw` |
-| System maintenance | `pearcleaner`, `purge` |
+| System maintenance | `pearcleaner`, `purge`, `keyboardcleantool` |
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text and display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 

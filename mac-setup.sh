@@ -917,6 +917,7 @@ FORMULAE=(
     pandoc              # Universal document converter
     plantuml            # UML/sequence/activity diagrams from plain text (uses graphviz)
     poppler             # PDF utilities (pdftotext, pdfinfo, pdftoppm, pdfimages)
+    pkgconf             # Compiler and linker flags for C libraries (pkg-config)
 
     # Homebrew TUI
     bbrew               # Bold Brew - TUI for Homebrew (now in homebrew/core)
@@ -928,12 +929,11 @@ FORMULAE=(
     # is not. Same call was made in f0c9a03; see also gcc, which IS listed but
     # arrives transitively via r/openblas.
     #
-    # Deliberately NOT listed for the same reason: pkgconf. It is a BUILD
-    # dependency of 55 of the formulae above - measured 2026-09-06 with
-    # `brew uses --installed --include-build pkgconf` - so it is on the machine
-    # before this array is ever read. It shows as installed_on_request and as a
-    # `brew leaves` entry, which is what makes it look like drift; declaring it
-    # would only add a line that changes nothing about what gets installed.
+    # pkgconf was left out on the same reasoning until 2026-09-13, and the
+    # reasoning did not hold for it. It is a BUILD dependency of many formulae
+    # above, but nothing installed needs it at run time (`brew uses --installed
+    # pkgconf` is empty), and Homebrew installs bottles without their build
+    # dependencies. A bare machine would therefore never get it.
 )
 
 if $SKIP_FORMULAE; then
@@ -983,6 +983,7 @@ CASKS=(
 
     # Networking & security
     tailscale-app       # Mesh VPN (cask renamed from 'tailscale' upstream)
+    surfshark           # Commercial VPN client
 
     # Browser & messaging
     whatsapp            # WhatsApp desktop
@@ -998,6 +999,7 @@ CASKS=(
     # System maintenance
     pearcleaner         # Uninstall apps and remove their leftover files
     purge               # Clear cache and junk files (from jithin-sabu/tap - see TAPS)
+    keyboardcleantool   # Blocks keyboard and Touch Bar input while you clean the keys
 
     # Fonts (Nerd Font patched - needed for Powerlevel10k icons)
     font-meslo-lg-nerd-font
