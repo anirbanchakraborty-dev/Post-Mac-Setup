@@ -1,21 +1,24 @@
 # Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
-# regenerated 2026-09-06. Restore with `brew bundle install`.
+# regenerated 2026-09-13. Restore with `brew bundle install`.
 #
 # Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
 # Homebrew 6.x disabled that switch outright, because emitting the one-line
 # descriptions below is now the default behaviour.
 #
 # This file and the FORMULAE / CASKS arrays in mac-setup.sh are close but not
-# identical, and three of the differences are deliberate rather than drift:
+# identical, and both differences are deliberate rather than drift:
 #
-#   gcc, ghostscript  declared by mac-setup.sh, absent here. Both arrive
-#                     transitively - gcc via r and openblas, ghostscript as a
-#                     declared dependency of the mactex cask - so Homebrew no
-#                     longer marks either installed_on_request and a dump does
-#                     not name them.
-#   pkgconf           present here, deliberately not declared by mac-setup.sh.
-#                     It is a build dependency of 55 installed formulae, so it
-#                     is on the machine long before either list is read.
+#   gcc          declared by mac-setup.sh, absent here. It arrives transitively
+#                via r and openblas, so Homebrew does not mark it
+#                installed_on_request and a dump does not name it.
+#   ghostscript  present here, deliberately not declared by mac-setup.sh. It is
+#                a declared dependency of the mactex cask, and Homebrew marks
+#                cask-required formulae installed_on_request, so a dump names
+#                it even though nobody asked for it by name.
+#
+# pkgconf used to be a third difference and is not any more: it is declared
+# in both since 2026-09-13, because nothing installed needs it at run time and
+# a bottle install does not pull in build dependencies.
 #
 # Verible is absent from this file on purpose. Its only Homebrew source was
 # the chipsalliance/verible tap, which went dead upstream (last commit
@@ -55,6 +58,8 @@ brew "ffmpeg"
 brew "fzf"
 # GitHub command-line tool
 brew "gh"
+# Interpreter for PostScript and PDF
+brew "ghostscript"
 # Distributed revision control system
 brew "git"
 # Quickly rewrite git repository history
@@ -142,13 +147,14 @@ cask "iina"
 cask "inkscape"
 # Terminal emulator as alternative to Apple's Terminal app
 cask "iterm2"
+# Blocks all Keyboard and TouchBar input
+cask "keyboardcleantool"
 # Discover, download, and run local LLMs
 cask "lm-studio"
 # Window manager
 cask "loop"
 # Full TeX Live distribution with GUI applications
 cask "mactex"
-# AI-first productivity assistant for Microsoft 365
 # Office suite
 cask "microsoft-office"
 # App to write, plan, collaborate, and get organised
@@ -167,6 +173,8 @@ cask "setapp"
 cask "skim"
 # System monitor for the menu bar
 cask "stats"
+# VPN client for secure internet access and private browsing
+cask "surfshark"
 # Mesh VPN based on WireGuard
 cask "tailscale-app"
 # LaTeX editor
