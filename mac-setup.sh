@@ -428,16 +428,29 @@ batch_install() {
     done
 }
 
+# True when version $1 is at least version $2. `sort -V` compares each run
+# of digits as a number, so 153.0.4234.100 beats 153.0.4234.32 and 10.0
+# beats 9.0 - the two cases a string compare gets backwards. $1 must start
+# with a digit: the "unknown" written when an Info.plist cannot be read
+# sorts above every real version under -V, and must never count as current.
+version_ge() {
+    case "$1" in [0-9]*) ;; *) return 1 ;; esac
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]
+}
+
 # Download a .pkg from a URL and run /usr/sbin/installer on it.
 # Used for vendor apps that don't have a Homebrew cask, or where the user
 # explicitly wants the publisher's own installer (e.g. Microsoft Edge).
 #
 # Usage: install_pkg_from_url "<app-path>" "<label>" "<url>" [installed_ver] [latest_ver]
 #
-# If both installed_ver and latest_ver are non-empty and equal, the install
-# is skipped. If they differ, the .pkg is (re)downloaded to upgrade in place.
-# If either is empty (e.g. couldn't fetch latest), falls back to the legacy
-# behavior: skip if app_path exists, else install.
+# A version string may carry a tag after its first space, as Edge's
+# "<version> (<arch>)" does. If both installed_ver and latest_ver are
+# non-empty, the tags match, and the installed version is at least the
+# latest one, the install is skipped. Anything else - an older version, a
+# different tag, an unreadable version - (re)downloads the .pkg over the
+# top. If either is empty (e.g. couldn't fetch latest), falls back to the
+# legacy behavior: skip if app_path exists, else install.
 install_pkg_from_url() {
     local app_path="$1"
     local label="$2"
@@ -447,8 +460,20 @@ install_pkg_from_url() {
 
     if [ -d "$app_path" ]; then
         if [ -n "$installed_ver" ] && [ -n "$latest_ver" ]; then
-            if [ "$installed_ver" = "$latest_ver" ]; then
-                success "$label (already installed, $installed_ver up to date)"
+            # The tag must match exactly, which is what still reinstalls an
+            # x86_64 Edge over itself at the current version. The version only
+            # has to be at least the latest: an app that updates itself can
+            # run ahead of the feed that names "latest", and treating that as
+            # stale would downgrade it on every run.
+            local installed_num="${installed_ver%% *}"
+            local latest_num="${latest_ver%% *}"
+            if [ "${installed_ver#"$installed_num"}" = "${latest_ver#"$latest_num"}" ] \
+                && version_ge "$installed_num" "$latest_num"; then
+                if [ "$installed_num" = "$latest_num" ]; then
+                    success "$label (already installed, $installed_ver up to date)"
+                else
+                    success "$label (already installed, $installed_ver is newer than the $latest_ver on offer)"
+                fi
                 (( SKIPPED_COUNT++ )) || true
                 return
             else
@@ -497,9 +522,10 @@ install_pkg_from_url() {
 #
 # Usage: install_binaries_from_tarball "<label>" "<url>" "<probe>" [installed_ver] [latest_ver]
 #
-# Same skip/upgrade contract as install_pkg_from_url: equal versions skip,
-# differing versions reinstall over the top, and an empty version on either
-# side degrades to "install only if <probe> is missing".
+# Skips and upgrades like install_pkg_from_url, except that the versions are
+# compared as plain strings: equal versions skip, differing versions
+# reinstall over the top, and an empty version on either side degrades to
+# "install only if <probe> is missing".
 install_binaries_from_tarball() {
     local label="$1"
     local url="$2"
@@ -1205,9 +1231,10 @@ else
     EDGE_LATEST=""
     EDGE_URL=""
 
-    # Describe what is on disk as "<version> (<arch>)" so one string compare
-    # in install_pkg_from_url catches BOTH a stale version and a
-    # wrong-architecture build. Architecture comes from `lipo -archs`, which
+    # Describe what is on disk as "<version> (<arch>)" so install_pkg_from_url
+    # catches BOTH a stale version (compared as a version, so a newer build
+    # is left alone) and a wrong-architecture build (the "(<arch>)" tag must
+    # match exactly). Architecture comes from `lipo -archs`, which
     # prints a single line ("x86_64 arm64" for a universal binary). Do not
     # use `file` here: its output for a universal binary spans three lines,
     # and the middle one ends in the exact string "Mach-O 64-bit executable
@@ -1223,18 +1250,32 @@ else
         EDGE_INSTALLED="${EDGE_VER:-unknown} ($EDGE_ARCH)"
     fi
 
-    # Ask the API for the stable macOS universal build, taking the version
-    # string and the .pkg URL from the same response so they cannot disagree.
+    # Ask the API for the stable macOS universal build, and read the version
+    # string and the .pkg URL off ONE release object so they cannot disagree.
+    # The feed lists several Stable releases, not always with installers
+    # attached: on 2026-09-13 it named 152.0.4191.53 first with an empty
+    # Artifacts list, then 153.0.4234.32 with the pkg. Two separate
+    # "first match" queries paired 152's version with 153's URL, so a Mac
+    # already on 153 was told it was stale. Hence: only releases that carry
+    # a pkg, ordered by version number rather than by where the API happens
+    # to list them, and the highest one wins.
     if command -v jq >/dev/null 2>&1; then
         EDGE_API_JSON="$(curl -fsSL --max-time 10 "$EDGE_API" 2>/dev/null || true)"
         if [ -n "$EDGE_API_JSON" ]; then
-            EDGE_LATEST_VER="$(printf '%s' "$EDGE_API_JSON" \
-                | jq -r '.[] | select(.Product == "Stable") | .Releases[] | select(.Platform == "MacOS" and .Architecture == "universal") | .ProductVersion' 2>/dev/null \
-                | head -1 || true)"
-            EDGE_URL="$(printf '%s' "$EDGE_API_JSON" \
-                | jq -r '.[] | select(.Product == "Stable") | .Releases[] | select(.Platform == "MacOS" and .Architecture == "universal") | .Artifacts[] | select(.ArtifactName == "pkg") | .Location' 2>/dev/null \
-                | head -1 || true)"
-            [ -n "${EDGE_LATEST_VER:-}" ] && EDGE_LATEST="$EDGE_LATEST_VER (native)"
+            EDGE_RELEASE="$(printf '%s' "$EDGE_API_JSON" | jq -r '
+                [ .[] | select(.Product == "Stable") | .Releases[]
+                  | select(.Platform == "MacOS" and .Architecture == "universal")
+                  | { version: .ProductVersion,
+                      url: ([ .Artifacts[]? | select(.ArtifactName == "pkg") | .Location ][0]) }
+                  | select((.version // "") != "" and (.url // "") != "") ]
+                | sort_by(.version | split(".") | map(tonumber? // 0))
+                | last // empty
+                | [.version, .url] | @tsv' 2>/dev/null || true)"
+            if [ -n "$EDGE_RELEASE" ]; then
+                EDGE_LATEST_VER="${EDGE_RELEASE%%$'\t'*}"
+                EDGE_URL="${EDGE_RELEASE#*$'\t'}"
+                EDGE_LATEST="$EDGE_LATEST_VER (native)"
+            fi
         fi
     else
         warn "jq not available - cannot query the EdgeUpdates API for the universal build"
