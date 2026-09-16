@@ -100,9 +100,15 @@ They are the authoritative lists; adding a package means editing an array.
 
 ### Taps
 
-| Tap | Why |
-|---|---|
-| `jithin-sabu/tap` | Purge — only source, not in homebrew/cask |
+`TAPS` is **empty**, and that is a settled state rather than a gap.
+`jithin-sabu/tap` was the last entry and existed for a single cask, `purge`, which
+was uninstalled on 2026-09-15. A tap with nothing installed from it is not inert,
+for the reason the next paragraph gives, so it was untapped rather than left
+declared. `TRUST_FORMULAE` is empty for the same reason and stays in step with it:
+a new tap needs an entry in both, and removing a tap means removing both. Both are
+expanded as `${ARR[@]+"${ARR[@]}"}` rather than `"${ARR[@]}"`, because under
+`set -u` the bash 3.2 that ships with macOS aborts on an empty array expanded the
+plain way.
 
 `chipsalliance/verible` was here until 2026-09-06 and is gone for a reason worth
 carrying. Homebrew evaluates every formula in every tap when it works out what is
@@ -155,17 +161,16 @@ so a bare machine would never get it. It is declared now.
 |---|---|
 | Editors & IDEs | `visual-studio-code`, `coteditor` |
 | AI | `claude` (desktop app), `claude-code` (terminal CLI), `lm-studio` (run local models offline) |
-| Productivity | `microsoft-office`, `setapp`, `obsidian`, `notion` |
+| Productivity | `microsoft-office`, `setapp`, `notion` |
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
-| Media & audio | `iina` |
 | Terminal | `iterm2` |
 | Networking & security | `tailscale-app` (renamed upstream from `tailscale`), `surfshark` (commercial VPN client) |
 | Browser & messaging | `whatsapp` |
 | Window management | `loop` |
-| Menu bar | `blip`, `stats`, `thaw` |
-| System maintenance | `pearcleaner`, `purge` (from `jithin-sabu/tap`), `keyboardcleantool` (blocks keyboard input while you clean the keys) |
+| Menu bar | `blip` |
+| System maintenance | `keyboardcleantool` (blocks keyboard input while you clean the keys) |
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text & display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 
@@ -247,7 +252,7 @@ anyway.
 **Taps are trusted, and the trust is verified.** Recent Homebrew sets
 `$HOMEBREW_REQUIRE_TAP_TRUST` by default and silently skips formulae from
 untrusted third-party taps, printing "Skipping … because it is not trusted" and
-leaving the package uninstalled, so `brew install purge` becomes a no-op and
+leaving the package uninstalled, so `brew install <package>` becomes a no-op and
 `brew upgrade` skips it too. Each tap is therefore trusted with
 `brew trust --tap` right after tapping. Trust is granted at *tap* level rather
 than per-formula because the same setting also gates the commands that evaluate
