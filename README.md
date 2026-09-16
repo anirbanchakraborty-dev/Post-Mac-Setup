@@ -103,7 +103,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 | Networking and security | `tailscale-app`, `surfshark` |
 | Browser and messaging | `whatsapp` |
 | Window management | `loop` |
-| Menu bar | `blip`, `stats`, `thaw` |
+| Menu bar | `blip`, `stats`, `thaw@beta` |
 | System maintenance | `pearcleaner`, `purge`, `keyboardcleantool` |
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text and display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
@@ -123,6 +123,8 @@ There were two until 2026-09-06, and losing the other one is the reason for the 
 Each tap is **trusted** with `brew trust --tap` immediately after it is added. Recent Homebrew sets `$HOMEBREW_REQUIRE_TAP_TRUST` by default and refuses to load formulae from untrusted third-party taps: it prints a skip notice and leaves the package uninstalled, so without this the two packages above silently never arrive and `brew upgrade` ignores them too. Trust is granted at tap level rather than per formula, because the same setting also gates the commands that evaluate every formula and cask, which is what the `brew bundle dump` in the cleanup step does. The step is guarded on `brew trust` existing at all, since older Homebrew lacks the subcommand and does not enforce trust either way. Afterwards each tapped package is resolved with `brew info` as a verification pass, so a typo in a tap name or a tap that failed to clone surfaces as a reported failure instead of a package that quietly never installs.
 
 Finally, the script **reports every third-party tap on the machine that it does not manage**: it walks `brew tap`, skips anything under `homebrew/`, and warns for each remaining tap missing from `TAPS`. It only reads, so it runs under `--dry-run` too. A script that only ever *adds* taps is blind to the ones it did not add, and that blindness is how a second stale tap went unnoticed on the reference machine — tapped at some point, nothing installed from it, emitting a deprecation warning on every `brew` command. The check warns rather than untapping, because removing a tap can orphan a package that is genuinely in use, and that call belongs to a person.
+
+One tap is outside `TAPS` on purpose and is reported as such rather than warned about. `d12frosted/emacs-plus` carries `emacs-plus@31`, which is installed by hand after the run for the reasons under [Emacs](#emacs) below. A warning that fires on every run for a settled decision stops being read, and then the next real one is missed too.
 
 ### Outside Homebrew
 
@@ -211,15 +213,38 @@ The cleanup step runs `brew cleanup` and exports a `Brewfile` snapshot of everyt
 
 ## After the Run
 
-The script prints these itself when it finishes:
+The script prints these itself when it finishes, in this order:
 
-1. Restart your terminal, or run `exec zsh`.
-2. Run `p10k configure` to set up the prompt, choosing MesloLGS NF or JetBrainsMono NF as the terminal font.
-3. Set the iTerm2 font: Preferences → Profiles → Text → Font → MesloLGS Nerd Font.
-4. Confirm the Homebrew versions are winning: `which git`, `which python3`, `which zsh`, `which bash` should all point inside the Homebrew prefix.
-5. Sign in to the apps that need accounts.
+- Restart your terminal, or run `exec zsh`.
+- Run `p10k configure` to set up the prompt, choosing MesloLGS NF or JetBrainsMono NF as the terminal font.
+- Set the iTerm2 font: Preferences → Profiles → Text → Font → MesloLGS Nerd Font.
+- Confirm the Homebrew versions are winning: `which git`, `which python3`, `which zsh`, `which bash` should all point inside the Homebrew prefix.
+- Sign in to the apps that need accounts.
+- Install Emacs, if you want it. See below.
 
 And, on this repository's path, the GitHub step from the quick start above: `gh auth login` followed by `gh auth setup-git`.
+
+### Emacs
+
+Emacs is the one package on the reference machine that this script deliberately does not install, and the reason is worth stating rather than leaving as a gap in the lists.
+
+`emacs-plus@31` comes from the `d12frosted/emacs-plus` tap and it compiles from source instead of arriving as a prebuilt bottle. That makes it the only package here whose install time is measured in minutes rather than seconds, and the only one that depends on the compiler toolchain this very script has just finished installing. A source build placed inside an automated run turns a predictable fifteen minutes into an unpredictable hour, and makes the run's own success a prerequisite for one of its own steps. So it sits outside the run, afterwards, when the toolchain is known good:
+
+```bash
+brew tap d12frosted/emacs-plus
+brew trust --tap d12frosted/emacs-plus
+brew install emacs-plus@31 --with-native-compilation=aot
+```
+
+Neither the tap nor the formula belongs in `mac-setup.sh` or in the `Brewfile`. A plain `brew bundle dump --force` will put both lines back into the Brewfile; delete them again.
+
+**Emacs needs one more pass after the build.** The 31.1 release tarball ships prebuilt byte-code whose timestamps are newer than its own `.el` sources, so `make` decides there is nothing to compile and the ahead-of-time native compilation the build was configured for never runs. `--with-native-compilation=aot` governs *how* Lisp is compiled when it is compiled; it cannot force a rebuild `make` has already ruled unnecessary. What you get is an Emacs that native-compiles lazily at runtime instead of one that arrives compiled. Running the pass by hand fixes it:
+
+```bash
+emacs --batch --eval '(progn (require (quote comp)) (require (quote comp-run)) (setq native-comp-async-report-warnings-errors nil) (native-compile-async (expand-file-name "lisp" (file-name-directory (directory-file-name data-directory))) (quote recursively)) (while (or comp-files-queue (> (comp--async-runnings) 0)) (sleep-for 1)))'
+```
+
+That took two and a half minutes on an M5 Pro and wrote 1,616 `.eln` files. It is idempotent — anything that already has a native build is left alone — and it writes into your own `~/.emacs.d/eln-cache/` rather than into the keg, so a `brew reinstall` of the same version does not undo it. An upgrade to a new Emacs version does, because the cache is keyed by version, so run it again after one.
 
 ## File Structure
 
