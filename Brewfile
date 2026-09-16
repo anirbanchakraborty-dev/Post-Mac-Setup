@@ -1,5 +1,5 @@
 # Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
-# regenerated 2026-09-13. Restore with `brew bundle install`.
+# regenerated 2026-09-15. Restore with `brew bundle install`.
 #
 # Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
 # Homebrew 6.x disabled that switch outright, because emitting the one-line
@@ -35,7 +35,6 @@
 # 2025-07-14) and whose formula stopped loading under Homebrew 6.x, breaking
 # every brew command on the machine. It is installed from the project's own
 # release tarball now - see the EXTRAS section of mac-setup.sh.
-tap "jithin-sabu/tap", trusted: true
 # Bourne-Again SHell, a UNIX command interpreter
 brew "bash"
 # Clone of cat(1) with syntax highlighting and Git integration
@@ -151,8 +150,6 @@ cask "font-jetbrains-mono-nerd-font"
 cask "font-meslo-lg-nerd-font"
 cask "font-patrick-hand"
 cask "font-poppins"
-# Free and open-source media player
-cask "iina"
 # Vector graphics editor
 cask "inkscape"
 # Terminal emulator as alternative to Apple's Terminal app
@@ -171,26 +168,16 @@ cask "microsoft-office"
 cask "notion"
 # Nikon suite for viewing, processing, and editing photos and videos
 cask "nx-studio"
-# Knowledge base that works on top of a local folder of plain text Markdown files
-cask "obsidian"
-# Utility to uninstall apps and remove leftover files from old/uninstalled apps
-cask "pearcleaner"
-# Free up your Mac safely by clearing cache and junk to the Trash
-cask "jithin-sabu/tap/purge"
 # Collection of apps available by subscription
 cask "setapp"
 # PDF reader and note-taking application
 cask "skim"
-# System monitor for the menu bar
-cask "stats"
 # VPN client for secure internet access and private browsing
 cask "surfshark"
 # Mesh VPN based on WireGuard
 cask "tailscale-app"
 # LaTeX editor
 cask "texifier"
-# Menu bar manager
-cask "thaw@beta"
 # Open-source code editor
 cask "visual-studio-code"
 # Native desktop client for WhatsApp

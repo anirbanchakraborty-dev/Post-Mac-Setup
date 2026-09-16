@@ -755,18 +755,32 @@ section "Adding Taps"
 # counted as newly installed in the summary. (The -i flag covers the casing;
 # the "homebrew-" prefix is what actually broke it.)
 TAPS=(
-    "jithin-sabu/tap"             # Purge - only source, not in homebrew/cask
+    # Empty since 2026-09-15. jithin-sabu/tap was the last one and it existed for
+    # a single cask, purge, which was uninstalled. A tap with nothing installed
+    # from it is not inert - Homebrew evaluates every formula in every tap when
+    # it enumerates packages - so it was untapped rather than left declared.
 )
+
+# Empty is a legitimate state for this array and for TRUST_FORMULAE below, and
+# it has to be spelled carefully. On a Mac that has not installed Homebrew yet,
+# `/usr/bin/env bash` resolves to the system bash 3.2, where `"${ARR[@]}"` on an
+# EMPTY array counts as an unbound variable under `set -u` and aborts the run -
+# the very run whose job is to install the newer bash. Bash 4.4 fixed that, so
+# the bug would be invisible on this machine and fatal on a clean one. Every
+# expansion of these two arrays therefore uses the `${ARR[@]+"${ARR[@]}"}` form,
+# which yields nothing at all when the array is empty and is quoted correctly
+# when it is not. Do not "simplify" it back.
 
 # Each tap above is TRUSTED right after it is tapped. Recent Homebrew sets
 # $HOMEBREW_REQUIRE_TAP_TRUST by default and refuses to load formulae from
 # untrusted third-party taps - it prints "Skipping <tap> because it is not
-# trusted" and silently leaves the package uninstalled, so without this
-# `brew install --cask purge` below is a no-op and `brew upgrade` skips it too.
-# Two taps have been dropped from this list rather than repaired: bbrew's, once
-# it graduated to homebrew/core (2026-08-21), and chipsalliance/verible's, once
-# its formula stopped loading at all (2026-09-06 - see EXTRAS, where verible now
-# comes from). Trust is recorded in ~/.homebrew/trust.json
+# trusted" and silently leaves the package uninstalled, so a tapped package
+# installed without this is a no-op and `brew upgrade` skips it too. Three taps
+# have been dropped from this list rather than repaired: bbrew's, once it
+# graduated to homebrew/core (2026-08-21); chipsalliance/verible's, once its
+# formula stopped loading at all (2026-09-06 - see EXTRAS, where verible now
+# comes from); and jithin-sabu/tap's, once purge was uninstalled (2026-09-15).
+# Trust is recorded in ~/.homebrew/trust.json
 # (or $XDG_CONFIG_HOME/homebrew/trust.json when that env var is set).
 #
 # Trust is granted at TAP level rather than per-formula. Per-formula trust is
@@ -782,19 +796,20 @@ TAPS=(
 # resolution check below tries both. Keeping one list means a new tap cannot be
 # added without also proving it resolves.
 TRUST_FORMULAE=(
-    "jithin-sabu/tap/purge"           # Purge (from jithin-sabu/tap) - CASK, not a formula
+    # Empty, and it stays in step with TAPS above: a new tap needs an entry in
+    # both, and removing a tap means removing both.
 )
 
 if $DRY_RUN; then
-    for tap in "${TAPS[@]}"; do
+    for tap in ${TAPS[@]+"${TAPS[@]}"}; do
         info "[DRY RUN] Would tap and trust: $tap"
     done
-    for f in "${TRUST_FORMULAE[@]}"; do
+    for f in ${TRUST_FORMULAE[@]+"${TRUST_FORMULAE[@]}"}; do
         info "[DRY RUN] Would verify tapped formula resolves: $f"
     done
 else
     EXISTING_TAPS="$(brew tap)"
-    for tap in "${TAPS[@]}"; do
+    for tap in ${TAPS[@]+"${TAPS[@]}"}; do
         if grep -qFix -- "$tap" <<<"$EXISTING_TAPS"; then
             success "tap: $tap (already tapped)"
             (( SKIPPED_COUNT++ )) || true
@@ -825,13 +840,15 @@ else
     # that failed to clone into a reported failure rather than a package that
     # quietly never installs.
     #
-    # Both --formula and --cask are tried, because this list holds both kinds.
-    # The check was --formula only until 2026-08-27, which was fine while every
-    # entry was a formula; adding the tapped cask jithin-sabu/tap/purge made it
-    # report a working tap as broken. Neither flag can be dropped in favour of a
-    # bare `brew info`, which is ambiguous when a formula and a cask share a name.
+    # Both --formula and --cask are tried, because this list may hold either
+    # kind. The check was --formula only until 2026-08-27, which was fine while
+    # every entry was a formula; adding the tapped cask jithin-sabu/tap/purge
+    # made it report a working tap as broken. That cask is gone now and the list
+    # is empty, so keep both flags - the next tapped cask must not reintroduce
+    # the same false failure. Neither can be dropped in favour of a bare
+    # `brew info`, which is ambiguous when a formula and a cask share a name.
     if brew trust --help >/dev/null 2>&1; then
-        for f in "${TRUST_FORMULAE[@]}"; do
+        for f in ${TRUST_FORMULAE[@]+"${TRUST_FORMULAE[@]}"}; do
             if brew info --formula "$f" >/dev/null 2>&1 || brew info --cask "$f" >/dev/null 2>&1; then
                 success "trusted and resolvable: $f"
             else
@@ -876,7 +893,7 @@ MANUAL_TAPS_FOUND=()
 while IFS= read -r t; do
     [ -n "$t" ] || continue
     case "$t" in homebrew/*) continue ;; esac
-    for known in "${TAPS[@]}"; do
+    for known in ${TAPS[@]+"${TAPS[@]}"}; do
         [ "$t" = "$known" ] && continue 2
     done
     for expected in "${MANUAL_TAPS[@]}"; do
@@ -1026,7 +1043,6 @@ CASKS=(
     # Productivity
     microsoft-office    # Microsoft 365 (Word, Excel, PowerPoint, etc.)
     setapp              # Setapp app subscription platform
-    obsidian            # Markdown-based knowledge base / note-taking app
     notion              # Notion workspace client
 
     # LaTeX
@@ -1040,9 +1056,6 @@ CASKS=(
 
     # Photography (Nikon Z6III workflow - see Photography/ in the hub)
     nx-studio           # Nikon viewing/processing/editing suite (pkg install, no .app artifact)
-
-    # Media & audio
-    iina                # Media player (free, open-source)
 
     # Terminal
     iterm2              # Terminal emulator
@@ -1059,12 +1072,8 @@ CASKS=(
 
     # Menu bar
     blip                # Wallpaper manager
-    stats               # System monitor for the menu bar
-    thaw@beta           # Menu bar manager
 
     # System maintenance
-    pearcleaner         # Uninstall apps and remove their leftover files
-    purge               # Clear cache and junk files (from jithin-sabu/tap - see TAPS)
     keyboardcleantool   # Blocks keyboard and Touch Bar input while you clean the keys
 
     # Fonts (Nerd Font patched - needed for Powerlevel10k icons)
