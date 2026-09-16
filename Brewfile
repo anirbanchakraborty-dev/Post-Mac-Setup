@@ -6,15 +6,25 @@
 # descriptions below is now the default behaviour.
 #
 # This file and the FORMULAE / CASKS arrays in mac-setup.sh are close but not
-# identical, and both differences are deliberate rather than drift:
+# identical, and all three differences are deliberate rather than drift:
 #
-#   gcc          declared by mac-setup.sh, absent here. It arrives transitively
-#                via r and openblas, so Homebrew does not mark it
-#                installed_on_request and a dump does not name it.
-#   ghostscript  present here, deliberately not declared by mac-setup.sh. It is
-#                a declared dependency of the mactex cask, and Homebrew marks
-#                cask-required formulae installed_on_request, so a dump names
-#                it even though nobody asked for it by name.
+#   gcc            declared by mac-setup.sh, absent here. It arrives
+#                  transitively via r and openblas, so Homebrew does not mark
+#                  it installed_on_request and a dump does not name it.
+#   ghostscript    present here, deliberately not declared by mac-setup.sh. It
+#                  is a declared dependency of the mactex cask, and Homebrew
+#                  marks cask-required formulae installed_on_request, so a dump
+#                  names it even though nobody asked for it by name.
+#   emacs-plus@31  installed on the reference Mac and in neither file, and its
+#                  d12frosted/emacs-plus tap is out of both too. It is the one
+#                  package here that compiles from source instead of arriving
+#                  as a prebuilt bottle, and a source build leans on a compiler
+#                  the same run has only just installed. So it is a documented
+#                  manual step that follows the automated run rather than
+#                  joining it - see the Emacs section of the README. A plain
+#                  `brew bundle dump --force` puts both lines back; delete them
+#                  again, and ship-check.mjs in the hub repo will say so if you
+#                  forget.
 #
 # pkgconf used to be a third difference and is not any more: it is declared
 # in both since 2026-09-13, because nothing installed needs it at run time and
@@ -180,7 +190,7 @@ cask "tailscale-app"
 # LaTeX editor
 cask "texifier"
 # Menu bar manager
-cask "thaw"
+cask "thaw@beta"
 # Open-source code editor
 cask "visual-studio-code"
 # Native desktop client for WhatsApp

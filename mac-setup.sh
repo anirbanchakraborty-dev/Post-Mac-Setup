@@ -187,6 +187,14 @@ print_summary() {
         echo ""
         echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} Setapp, Tailscale, etc."
         echo ""
+        echo -e "  ${CYAN}6.${NC} ${BOLD}Install Emacs, if you want it:${NC}"
+        echo "     brew tap d12frosted/emacs-plus"
+        echo "     brew trust --tap d12frosted/emacs-plus"
+        echo "     brew install emacs-plus@31 --with-native-compilation=aot"
+        echo "     It builds from source, so it is left out of this run and done"
+        echo "     afterwards, once the toolchain above is known good. It needs one"
+        echo "     more pass after the build - see the Emacs section of README.md."
+        echo ""
 
         if ! $NO_LOG && [ -n "${LOG_FILE:-}" ]; then
             echo -e "  ${BOLD}Log saved to:${NC} $LOG_FILE"
@@ -856,15 +864,35 @@ fi
 #
 # This check reads and never writes, so it runs under --dry-run too: a dry run
 # is the cheapest place to be told about a tap that is about to break things.
+# One tap is outside TAPS on purpose and is not a finding. It is listed here so
+# that a deliberate choice reads as one, instead of printing the same warning on
+# every run until the warning stops meaning anything.
+MANUAL_TAPS=(
+    "d12frosted/emacs-plus"       # Emacs - documented manual step, see README.md
+)
+
 UNMANAGED_TAPS=()
+MANUAL_TAPS_FOUND=()
 while IFS= read -r t; do
     [ -n "$t" ] || continue
     case "$t" in homebrew/*) continue ;; esac
     for known in "${TAPS[@]}"; do
         [ "$t" = "$known" ] && continue 2
     done
+    for expected in "${MANUAL_TAPS[@]}"; do
+        if [ "$t" = "$expected" ]; then
+            MANUAL_TAPS_FOUND+=("$t")
+            continue 2
+        fi
+    done
     UNMANAGED_TAPS+=("$t")
 done < <(brew tap 2>/dev/null || true)
+
+if [ "${#MANUAL_TAPS_FOUND[@]}" -gt 0 ]; then
+    for t in "${MANUAL_TAPS_FOUND[@]}"; do
+        info "tap left out of this script on purpose: $t (documented manual step - see README.md)"
+    done
+fi
 
 if [ "${#UNMANAGED_TAPS[@]}" -gt 0 ]; then
     for t in "${UNMANAGED_TAPS[@]}"; do
@@ -960,6 +988,18 @@ FORMULAE=(
     # above, but nothing installed needs it at run time (`brew uses --installed
     # pkgconf` is empty), and Homebrew installs bottles without their build
     # dependencies. A bare machine would therefore never get it.
+    #
+    # Deliberately NOT listed, for a different reason: emacs-plus@31, from the
+    # d12frosted/emacs-plus tap. It is the only package this machine has that
+    # compiles from source instead of arriving as a prebuilt bottle, so it is
+    # the only one whose install time is measured in minutes and the only one
+    # that depends on the compiler toolchain this very script has just finished
+    # installing. Putting a source build inside an automated run makes the run
+    # unpredictable and makes its own success a prerequisite for one of its
+    # steps. It is a documented manual step that follows this run instead, when
+    # the toolchain is known good - see the Emacs section of README.md, which
+    # also covers the native-compilation pass the build itself skips. The tap
+    # is named in MANUAL_TAPS above for the same reason.
 )
 
 if $SKIP_FORMULAE; then
@@ -1020,7 +1060,7 @@ CASKS=(
     # Menu bar
     blip                # Wallpaper manager
     stats               # System monitor for the menu bar
-    thaw                # Menu bar manager
+    thaw@beta           # Menu bar manager
 
     # System maintenance
     pearcleaner         # Uninstall apps and remove their leftover files
