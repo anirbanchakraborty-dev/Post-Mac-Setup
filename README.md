@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 48 command-line tools, 27 GUI apps and 11 fonts, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 48 command-line tools, 21 GUI apps and 11 fonts, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -88,23 +88,22 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 `sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, `pkgconf` supplies the `pkg-config` command that build scripts use to find C libraries, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
 
-### GUI apps and fonts (38 casks)
+### GUI apps and fonts (32 casks)
 
 | Category | Casks |
 |---|---|
 | Editors and IDEs | `visual-studio-code`, `coteditor` |
 | AI | `claude`, `claude-code`, `lm-studio` |
-| Productivity | `microsoft-office`, `setapp`, `obsidian`, `notion` |
+| Productivity | `microsoft-office`, `setapp`, `notion` |
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
-| Media and audio | `iina` |
 | Terminal | `iterm2` |
 | Networking and security | `tailscale-app`, `surfshark` |
 | Browser and messaging | `whatsapp` |
 | Window management | `loop` |
-| Menu bar | `blip`, `stats`, `thaw@beta` |
-| System maintenance | `pearcleaner`, `purge`, `keyboardcleantool` |
+| Menu bar | `blip` |
+| System maintenance | `keyboardcleantool` |
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text and display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 
@@ -112,15 +111,11 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 ### Taps
 
-One third-party tap, carrying exactly one package that is not in `homebrew/core` or `homebrew/cask`:
+None. `TAPS` is empty, so this step does nothing on a clean run, and the machinery below is documented because the array is meant to be filled again rather than because anything fills it today.
 
-| Tap | Provides |
-|---|---|
-| `jithin-sabu/tap` | `purge` |
+Three taps have passed through it and none has stayed. `valkyrie00/bbrew` left when `bbrew` graduated to `homebrew/core` (2026-08-21). `jithin-sabu/tap` left when its only package, the `purge` cask, was uninstalled (2026-09-15) — a tap with nothing installed from it is not free, for the reason the next paragraph gives, so it was untapped rather than left declared. `chipsalliance/verible` left in the worst way, and it is the reason for the check described at the end of this section. It had been abandoned upstream since July 2025, and its formula still called `depends_on macos: :catalina`, a method Homebrew 6.x removed. **Homebrew does not load formulae lazily** — working out what is installable evaluates every formula in every tap on the machine — so that one dead definition made unrelated commands fail outright, including `brew install --cask notion`. An abandoned tap is not dormant. It is a fault waiting for the next unrelated install. Verible moved to a direct download; see below.
 
-There were two until 2026-09-06, and losing the other one is the reason for the check described at the end of this section. `chipsalliance/verible` had been abandoned upstream since July 2025, and its formula still called `depends_on macos: :catalina`, a method Homebrew 6.x removed. **Homebrew does not load formulae lazily** — working out what is installable evaluates every formula in every tap on the machine — so that one dead definition made unrelated commands fail outright, including `brew install --cask notion`. An abandoned tap is not dormant. It is a fault waiting for the next unrelated install. Verible moved to a direct download; see below.
-
-Each tap is **trusted** with `brew trust --tap` immediately after it is added. Recent Homebrew sets `$HOMEBREW_REQUIRE_TAP_TRUST` by default and refuses to load formulae from untrusted third-party taps: it prints a skip notice and leaves the package uninstalled, so without this the two packages above silently never arrive and `brew upgrade` ignores them too. Trust is granted at tap level rather than per formula, because the same setting also gates the commands that evaluate every formula and cask, which is what the `brew bundle dump` in the cleanup step does. The step is guarded on `brew trust` existing at all, since older Homebrew lacks the subcommand and does not enforce trust either way. Afterwards each tapped package is resolved with `brew info` as a verification pass, so a typo in a tap name or a tap that failed to clone surfaces as a reported failure instead of a package that quietly never installs.
+Each tap is **trusted** with `brew trust --tap` immediately after it is added. Recent Homebrew sets `$HOMEBREW_REQUIRE_TAP_TRUST` by default and refuses to load formulae from untrusted third-party taps: it prints a skip notice and leaves the package uninstalled, so without this a tapped package silently never arrives and `brew upgrade` ignores it too. Trust is granted at tap level rather than per formula, because the same setting also gates the commands that evaluate every formula and cask, which is what the `brew bundle dump` in the cleanup step does. The step is guarded on `brew trust` existing at all, since older Homebrew lacks the subcommand and does not enforce trust either way. Afterwards each tapped package is resolved with `brew info` as a verification pass, so a typo in a tap name or a tap that failed to clone surfaces as a reported failure instead of a package that quietly never installs. Both the tap list and the verification list are expanded as `${ARR[@]+"${ARR[@]}"}`, not `"${ARR[@]}"`: on a Mac with no Homebrew yet, `/usr/bin/env bash` finds the system bash 3.2, which treats the plain form on an empty array as an unbound variable under `set -u` and kills the run. That is a failure only a clean machine can have, which is exactly the machine this script is for.
 
 Finally, the script **reports every third-party tap on the machine that it does not manage**: it walks `brew tap`, skips anything under `homebrew/`, and warns for each remaining tap missing from `TAPS`. It only reads, so it runs under `--dry-run` too. A script that only ever *adds* taps is blind to the ones it did not add, and that blindness is how a second stale tap went unnoticed on the reference machine — tapped at some point, nothing installed from it, emitting a deprecation warning on every `brew` command. The check warns rather than untapping, because removing a tap can orphan a package that is genuinely in use, and that call belongs to a person.
 
