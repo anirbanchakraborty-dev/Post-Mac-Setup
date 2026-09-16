@@ -239,7 +239,23 @@ Neither the tap nor the formula belongs in `mac-setup.sh` or in the `Brewfile`. 
 emacs --batch --eval '(progn (require (quote comp)) (require (quote comp-run)) (setq native-comp-async-report-warnings-errors nil) (native-compile-async (expand-file-name "lisp" (file-name-directory (directory-file-name data-directory))) (quote recursively)) (while (or comp-files-queue (> (comp--async-runnings) 0)) (sleep-for 1)))'
 ```
 
-That took two and a half minutes on an M5 Pro and wrote 1,616 `.eln` files. It is idempotent — anything that already has a native build is left alone — and it writes into your own `~/.emacs.d/eln-cache/` rather than into the keg, so a `brew reinstall` of the same version does not undo it. An upgrade to a new Emacs version does, because the cache is keyed by version, so run it again after one.
+That took two and a half minutes on an M5 Pro and wrote 1,616 `.eln` files. It is idempotent — anything that already has a native build is left alone — and it writes into your own eln cache rather than into the keg — `~/.emacs.d/eln-cache/` on a machine with no Emacs configuration yet, or `~/.config/emacs/eln-cache/` if you already keep your configuration there and have no `~/.emacs.d`, so a `brew reinstall` of the same version does not undo it. An upgrade to a new Emacs version does, because the cache is keyed by version, so run it again after one.
+
+**Nothing shows up in the launcher, either.** `emacs-plus` installs `Emacs.app` and `Emacs Client.app` inside the keg and leaves `/Applications` alone, so there is no icon to click. On macOS 26 and later there is no Launchpad — the launcher is Spotlight's Apps view, and that lists an entry only once LaunchServices has indexed a real application bundle. Both obvious fixes were measured on 2026-09-15 and both fail:
+
+- A **symlink** into `/Applications` is not indexed at all. Spotlight returns nothing for it while happily resolving other apps in the same folder.
+- A **Finder alias** is indexed, but as kind `Alias` rather than `Application` — a document that points at an app, so the Apps view still does not list it.
+
+Only a real copy registers as an application bundle. That is what the formula's own caveat recommends, and `ditto` preserves the code signature where `cp` can disturb it:
+
+```bash
+ditto /opt/homebrew/opt/emacs-plus@31/Emacs.app /Applications/Emacs.app
+ditto "/opt/homebrew/opt/emacs-plus@31/Emacs Client.app" "/Applications/Emacs Client.app"
+```
+
+The copies do not update themselves, and that is the part that bites months later. `Emacs.app`'s executable hardcodes the *versioned* Cellar path, and `Emacs Client.app`'s AppleScript hardcodes a versioned `emacsclient`. A `brew upgrade` removes that directory, and both copies break while their icons sit in the launcher looking perfectly fine — nothing announces it. Re-run both commands after any upgrade or reinstall, alongside the compilation pass above, since the same operations undo both.
+
+Of the two, `Emacs Client.app` is the one worth keeping in the Dock. It opens a frame against an already-running daemon, so it appears immediately instead of starting Emacs from cold.
 
 ## File Structure
 
