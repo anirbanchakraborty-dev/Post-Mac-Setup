@@ -959,7 +959,7 @@ FORMULAE=(
     riscv64-elf-gcc     # Bare-metal RISC-V cross compiler (riscv64-elf target)
     dtc                 # Device tree compiler
 
-    # Media & audio (Manim narration pipeline - see Research-Projects/)
+    # Media & audio (Manim narration pipeline)
     ffmpeg              # Audio/video transcode and mux
     espeak-ng           # Speech synthesiser, used for narration scratch tracks
 
@@ -989,6 +989,46 @@ FORMULAE=(
     plantuml            # UML/sequence/activity diagrams from plain text (uses graphviz)
     poppler             # PDF utilities (pdftotext, pdfinfo, pdftoppm, pdfimages)
     pkgconf             # Compiler and linker flags for C libraries (pkg-config)
+
+    # Editor tooling (language servers, formatters and spell checking for Emacs)
+    enchant             # Spell-checking library (jinx calls it through enchant-2)
+    texlab              # LaTeX language server
+    marksman            # Markdown language server
+    basedpyright        # Python language server (a Pyright fork)
+    ruff                # Python linter and formatter
+    typescript-language-server # TypeScript and JavaScript language server
+    bash-language-server # Bash language server
+    vscode-langservers-extracted # JSON, CSS and HTML language servers from VS Code
+    yaml-language-server # YAML language server
+    asm-lsp             # Assembly language server (GNU and NASM, x86-64 and ARM64).
+                        # Needs a .asm-lsp.toml per project naming the assembler and
+                        # instruction set: it defaults to GNU syntax and the HOST
+                        # architecture, so on an Apple-silicon Mac a GNU x86-64 file
+                        # gets no hover at all, and a NASM x86-64 file gets ARM64
+                        # documentation for the same mnemonic, with no error.
+    dockerfile-language-server # Dockerfile language server
+    neocmakelsp         # CMake language server
+    lua-language-server # Lua language server
+    ruby-lsp            # Ruby language server (Shopify's)
+    jdtls               # Java language server (Eclipse JDT)
+    elixir-ls           # Elixir language server
+    taplo               # TOML language server and formatter
+    harper              # Grammar checker that runs offline (harper-ls)
+    shellcheck          # Shell script linter; bash-language-server calls it
+    prettier            # Formatter for JavaScript, TypeScript, CSS, JSON and YAML
+    shfmt               # Shell script formatter
+    automake            # Builds the epdfinfo server behind Emacs's pdf-tools
+    direnv              # Per-project environment variables; Emacs reads it through envrc
+    delve               # Go debugger, driven from Emacs by dape
+    dotnet              # The .NET SDK, which carries the `dotnet tool' installer below
+    #
+    # Deliberately NOT listed: elixir and ruby. Each is a runtime dependency of
+    # the language server above it - `brew uses --installed elixir` is exactly
+    # elixir-ls, and ruby's is ruby-lsp - so a bare machine gets both without
+    # asking, and Homebrew does not mark a dependency installed_on_request.
+    # Declaring them here would put two names in this array that a Brewfile
+    # dump never prints, which is the drift the header of that file exists to
+    # explain. Same call as gcc above.
 
     # Homebrew TUI
     bbrew               # Bold Brew - TUI for Homebrew (now in homebrew/core)
@@ -1112,58 +1152,111 @@ section "Installing npm Global Packages"
 # Ensure Homebrew node is on PATH for this session
 export PATH="$BREW_PREFIX/bin:$PATH"
 
+# Each entry is `<npm package>|<what it is for>'. The package name is what npm
+# is asked for and what the already-installed check greps, so a scoped name
+# like @mdx-js/language-server is written here exactly as npm spells it.
+NPM_GLOBALS=(
+    "netlistsvg|schematic viewer for Yosys JSON netlists"
+    "@mdx-js/language-server|MDX language server, for the website's .mdx content"
+    "intelephense|PHP language server"
+)
+
 # Detection runs under --dry-run too. It is read-only, and an unconditional
 # "[DRY RUN] Would install" placed ahead of it reported packages that were
 # already present - the same early-return bug batch_install had until
 # 2026-08-22. A dry run that cannot tell present from missing reports nothing.
-if ! command -v npm &>/dev/null; then
-    warn "npm not found - skipping netlistsvg. Install node first, then run: npm install -g netlistsvg"
-    FAILED_ITEMS+=("netlistsvg (npm)")
-elif npm list -g --depth=0 netlistsvg &>/dev/null; then
-    success "netlistsvg (npm) (already installed)"
-    (( SKIPPED_COUNT++ )) || true
-elif $DRY_RUN; then
-    info "[DRY RUN] Would install netlistsvg via npm"
-else
-    info "Installing netlistsvg (schematic viewer for Yosys JSON netlists)..."
-    if npm install -g netlistsvg; then
-        success "netlistsvg (npm)"
-        (( INSTALLED_COUNT++ )) || true
+for entry in "${NPM_GLOBALS[@]}"; do
+    npm_pkg="${entry%%|*}"
+    npm_what="${entry#*|}"
+    if ! command -v npm &>/dev/null; then
+        warn "npm not found - skipping $npm_pkg. Install node first, then run: npm install -g $npm_pkg"
+        FAILED_ITEMS+=("$npm_pkg (npm)")
+    elif npm list -g --depth=0 "$npm_pkg" &>/dev/null; then
+        success "$npm_pkg (npm) (already installed)"
+        (( SKIPPED_COUNT++ )) || true
+    elif $DRY_RUN; then
+        info "[DRY RUN] Would install $npm_pkg via npm"
     else
-        warn "Failed to install netlistsvg"
-        FAILED_ITEMS+=("netlistsvg (npm)")
+        info "Installing $npm_pkg ($npm_what)..."
+        if npm install -g "$npm_pkg"; then
+            success "$npm_pkg (npm)"
+            (( INSTALLED_COUNT++ )) || true
+        else
+            warn "Failed to install $npm_pkg"
+            FAILED_ITEMS+=("$npm_pkg (npm)")
+        fi
     fi
-fi
+done
 
 # ──────────────────────────────────────────────────────────────────
 # uv TOOL GLOBAL PACKAGES (CLI tools installed via `uv tool install`)
 # ─────────────────────────────────────────────────────────────────────
 section "Installing uv Tool Global Packages"
 
-# graphifyy - knowledge-graph builder used by the /graphify skill, vendored into
-# Research-Projects/pqc-refmodel/.claude/skills/graphify/ and
-# Website-Building-Projects/dranirbanchakraborty.com/.claude/skills/graphify/.
+# graphifyy - knowledge-graph builder used by the /graphify skill, which is
+# vendored per-project rather than installed once, so each project that wants it
+# carries its own copy under .claude/skills/graphify/.
 # PyPI package is `graphifyy` (double-y), CLI is `graphify`.
 # Detection runs under --dry-run too. It is read-only, and an unconditional
 # "[DRY RUN] Would install" placed ahead of it reported packages that were
 # already present - the same early-return bug batch_install had until
 # 2026-08-22. A dry run that cannot tell present from missing reports nothing.
-if ! command -v uv &>/dev/null; then
-    warn "uv not found - skipping graphifyy. uv comes from the Homebrew formulae step above; if it failed, install manually then run: uv tool install graphifyy"
-    FAILED_ITEMS+=("graphifyy (uv tool)")
-elif uv tool list 2>/dev/null | grep -q '^graphifyy '; then
-    success "graphifyy (uv tool) (already installed)"
+# Each entry is `<PyPI package>|<what it is for>'. debugpy is here rather than
+# in a project's own virtual environment because Emacs's dape runs the adapter
+# out of this tool environment and gives the debugged program a different
+# interpreter, so one install serves every project.
+UV_TOOLS=(
+    "graphifyy|knowledge-graph builder for the /graphify skill"
+    "debugpy|Python debug adapter, driven from Emacs by dape"
+)
+
+for entry in "${UV_TOOLS[@]}"; do
+    uv_pkg="${entry%%|*}"
+    uv_what="${entry#*|}"
+    if ! command -v uv &>/dev/null; then
+        warn "uv not found - skipping $uv_pkg. uv comes from the Homebrew formulae step above; if it failed, install manually then run: uv tool install $uv_pkg"
+        FAILED_ITEMS+=("$uv_pkg (uv tool)")
+    elif uv tool list 2>/dev/null | grep -q "^$uv_pkg "; then
+        success "$uv_pkg (uv tool) (already installed)"
+        (( SKIPPED_COUNT++ )) || true
+    elif $DRY_RUN; then
+        info "[DRY RUN] Would install $uv_pkg via uv tool"
+    else
+        info "Installing $uv_pkg ($uv_what)..."
+        if uv tool install "$uv_pkg"; then
+            success "$uv_pkg (uv tool)"
+            (( INSTALLED_COUNT++ )) || true
+        else
+            warn "Failed to install $uv_pkg via uv tool"
+            FAILED_ITEMS+=("$uv_pkg (uv tool)")
+        fi
+    fi
+done
+
+# ──────────────────────────────────────────────────────────────────
+# .NET GLOBAL TOOLS (CLI tools installed via `dotnet tool install -g`)
+# ─────────────────────────────────────────────────────────────────────
+section "Installing .NET Global Tools"
+
+# csharp-ls is the C# language server Emacs's eglot starts. It is a .NET tool
+# rather than a Homebrew formula because none exists, and `dotnet tool' puts it
+# in ~/.dotnet/tools, which the PATH block below adds.
+if ! command -v dotnet &>/dev/null; then
+    warn "dotnet not found - skipping csharp-ls. dotnet comes from the Homebrew formulae step above; if it failed, install manually then run: dotnet tool install -g csharp-ls"
+    FAILED_ITEMS+=("csharp-ls (dotnet tool)")
+elif [[ -x "$HOME/.dotnet/tools/csharp-ls" ]]; then
+    success "csharp-ls (dotnet tool) (already installed)"
     (( SKIPPED_COUNT++ )) || true
 elif $DRY_RUN; then
-    info "[DRY RUN] Would install graphifyy via uv tool"
+    info "[DRY RUN] Would install csharp-ls via dotnet tool"
 else
-    info "Installing graphifyy (knowledge-graph builder for /graphify skill)..."
-    if uv tool install graphifyy; then
-        success "graphifyy (uv tool)"
+    info "Installing csharp-ls (C# language server)..."
+    if dotnet tool install -g csharp-ls; then
+        success "csharp-ls (dotnet tool)"
         (( INSTALLED_COUNT++ )) || true
     else
-        warn "Failed to install graphifyy via uv tool"
-        FAILED_ITEMS+=("graphifyy (uv tool)")
+        warn "Failed to install csharp-ls via dotnet tool"
+        FAILED_ITEMS+=("csharp-ls (dotnet tool)")
     fi
 fi
 
@@ -1921,7 +2014,19 @@ fi
 # deliberate: nothing lands here unless Homebrew could not supply it.
 # NOTE: keep this comment free of apostrophes - the whole block is a
 # single-quoted bash string and one apostrophe ends it.
-export PATH="$HOME/.local/bin:$PATH"'
+export PATH="$HOME/.local/bin:$PATH"
+
+# .NET global tools, which is where dotnet puts anything installed with
+# `dotnet tool install -g` - csharp-ls is the one this was added for. The SDK
+# root is set too, because Homebrew installs dotnet into a keg the launcher
+# does not look in by default. The opt path survives an upgrade; the Cellar
+# path the wrapper script names would not.
+if [[ -d "$HOME/.dotnet/tools" ]]; then
+  export PATH="$HOME/.dotnet/tools:$PATH"
+fi
+if [[ -z "${DOTNET_ROOT:-}" && -d "$HOMEBREW_PREFIX/opt/dotnet/libexec" ]]; then
+  export DOTNET_ROOT="$HOMEBREW_PREFIX/opt/dotnet/libexec"
+fi'
 
 inject_block "$ZSH_PATHS" "EDITOR-CONFIG" \
 '# Default editor
