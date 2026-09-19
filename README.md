@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 48 command-line tools, 21 GUI apps and 11 fonts, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 21 GUI apps and 11 fonts, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -71,7 +71,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 ## What Gets Installed
 
-### CLI tools (48 formulae)
+### CLI tools (73 formulae)
 
 | Category | Packages |
 |---|---|
@@ -83,10 +83,16 @@ Two detection details are worth knowing because they are where naive "is it inst
 | RISC-V toolchain | `riscv64-elf-gcc`, `dtc` |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils`, `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom`, `hyperfine`, `difftastic` |
 | Media and audio | `ffmpeg`, `espeak-ng` |
-| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler`, `pkgconf` |
+| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler`, `pkgconf`, `automake` |
+| Language servers | `texlab`, `marksman`, `basedpyright`, `typescript-language-server`, `bash-language-server`, `vscode-langservers-extracted`, `yaml-language-server`, `asm-lsp`, `dockerfile-language-server`, `neocmakelsp`, `lua-language-server`, `ruby-lsp`, `jdtls`, `elixir-ls`, `taplo` |
+| Linting, formatting and grammar | `ruff`, `prettier`, `shfmt`, `shellcheck`, `harper`, `enchant` |
+| Debugging and project environments | `delve`, `direnv` |
+| .NET SDK | `dotnet` |
 | Homebrew TUI | `bbrew` |
 
 `sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, `pkgconf` supplies the `pkg-config` command that build scripts use to find C libraries, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
+
+The language-server block exists for an editor rather than for the shell, and a few entries are not obvious. `shellcheck` is listed because `bash-language-server` shells out to it and reports almost nothing when it is absent, which looks like a working server rather than a missing dependency. `harper` is a grammar checker that runs entirely offline. `enchant` is the spell-checking library an editor calls through `enchant-2` rather than a command anyone runs. `dotnet` is here for the SDK, which carries the `dotnet tool` installer the next section uses, not because anything builds C# on this machine. Two runtimes are deliberately absent from the list: `elixir` and `ruby` each arrive as a runtime dependency of the language server above it, so a bare machine gets both without being asked, and Homebrew does not mark a dependency as installed on request.
 
 ### GUI apps and fonts (32 casks)
 
@@ -123,7 +129,7 @@ One tap is outside `TAPS` on purpose and is reported as such rather than warned 
 
 ### Outside Homebrew
 
-Two globals are installed through other package managers: a schematic renderer for Yosys JSON netlists via `npm install -g`, and a knowledge-graph builder CLI via `uv tool install`. Both are skipped when already present, and both degrade gracefully — if `npm` or `uv` is missing, the step warns, records the item in the failure summary, and continues.
+Six globals are installed through other package managers. Three come from `npm install -g`: a schematic renderer for Yosys JSON netlists, an MDX language server, and a PHP language server. Two come from `uv tool install`: a knowledge-graph builder CLI, and the Python debug adapter, which is a global tool rather than a project dependency because the adapter runs out of its own environment while the program being debugged runs under the project interpreter. One comes from `dotnet tool install -g`: a C# language server, which has no Homebrew formula and lands in `~/.dotnet/tools` rather than on the ordinary path. All six are skipped when already present, and all degrade gracefully — if `npm`, `uv` or `dotnet` is missing, the step warns, records the item in the failure summary, and continues.
 
 Two packages are installed straight from the publisher rather than through Homebrew, both gated behind `--skip-extras`.
 

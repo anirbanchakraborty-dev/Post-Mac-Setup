@@ -1,5 +1,5 @@
 # Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
-# regenerated 2026-09-15. Restore with `brew bundle install`.
+# regenerated 2026-09-19. Restore with `brew bundle install`.
 #
 # Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
 # Homebrew 6.x disabled that switch outright, because emitting the one-line
@@ -35,8 +35,18 @@
 # 2025-07-14) and whose formula stopped loading under Homebrew 6.x, breaking
 # every brew command on the machine. It is installed from the project's own
 # release tarball now - see the EXTRAS section of mac-setup.sh.
+# Language server for NASM/GAS/GO Assembly
+brew "asm-lsp"
+# Tool for generating GNU Standards-compliant Makefiles
+brew "automake"
+# Open-source, cross-platform JavaScript runtime environment
+brew "node"
+# Pyright fork with various improvements and built-in pylance features
+brew "basedpyright"
 # Bourne-Again SHell, a UNIX command interpreter
 brew "bash"
+# Language Server for Bash
+brew "bash-language-server"
 # Clone of cat(1) with syntax highlighting and Git integration
 brew "bat"
 # TUI for managing Homebrew, Flatpak, and Mac App Store packages
@@ -49,12 +59,24 @@ brew "cmake"
 brew "coreutils"
 # Get a file from an HTTP, HTTPS or FTP server
 brew "curl"
+# Debugger for the Go programming language
+brew "delve"
 # Diff that understands syntax
 brew "difftastic"
+# Load/unload environment variables based on $PWD
+brew "direnv"
+# Language server for Dockerfiles powered by Node, TypeScript, and VSCode
+brew "dockerfile-language-server"
+# .NET Core
+brew "dotnet"
 # Device tree compiler
 brew "dtc"
 # More intuitive version of du in rust
 brew "dust"
+# Language Server and Debugger for Elixir
+brew "elixir-ls"
+# Spellchecker wrapping library
+brew "enchant"
 # Speech synthesizer that supports more than hundred languages and accents
 brew "espeak-ng"
 # Modern, maintained replacement for ls
@@ -79,18 +101,28 @@ brew "git-lfs"
 brew "go"
 # Graph visualization software from AT&T and Bell Labs
 brew "graphviz"
+# Grammar Checker for Developers
+brew "harper"
 # Improved top (interactive process viewer)
 brew "htop"
 # Command-line benchmarking tool
 brew "hyperfine"
 # Verilog simulation and synthesis tool
 brew "icarus-verilog"
+# Interpreted, interactive, object-oriented programming language
+brew "python@3.14"
+# Java language specific implementation of the Language Server Protocol
+brew "jdtls"
 # Lightweight and flexible command-line JSON processor
 brew "jq"
 # Next-gen compiler infrastructure
 brew "llvm"
-# Open-source, cross-platform JavaScript runtime environment
-brew "node"
+# Language Server for the Lua language
+brew "lua-language-server"
+# Language Server Protocol for Markdown
+brew "marksman"
+# Another cmake lsp
+brew "neocmakelsp"
 # Swiss-army knife of markup format conversion
 brew "pandoc"
 # Package compiler and linker metadata toolkit
@@ -101,32 +133,50 @@ brew "plantuml"
 brew "pnpm"
 # PDF rendering library (based on the xpdf-3.0 code base)
 brew "poppler"
-# Interpreted, interactive, object-oriented programming language
-brew "python@3.14"
+# Code formatter for JavaScript, CSS, JSON, GraphQL, Markdown, YAML
+brew "prettier"
 # Software environment for statistical computing
 brew "r"
 # Search tool like grep and The Silver Searcher
 brew "ripgrep"
 # GNU compiler collection for riscv64-elf
 brew "riscv64-elf-gcc"
+# Opinionated language server for Ruby
+brew "ruby-lsp"
+# Extremely fast Python linter, written in Rust
+brew "ruff"
 # Rust toolchain installer
 brew "rustup"
 # Framework for Verilog RTL synthesis
 brew "yosys"
 # Front-end for Yosys-based formal verification flows
 brew "sby"
+# Static analysis and lint tool, for (ba)sh scripts
+brew "shellcheck"
+# Autoformat shell script source code
+brew "shfmt"
 # Waveform viewer, supporting VCD, FST, or GHW format
 brew "surfer"
+# TOML toolkit written in Rust
+brew "taplo"
+# Implementation of the Language Server Protocol for LaTeX
+brew "texlab"
 # Official tldr client written in Rust
 brew "tlrc"
 # Display directories as trees (with optional color/HTML output)
 brew "tree"
+# Language Server Protocol implementation for TypeScript wrapping tsserver
+brew "typescript-language-server"
 # Extremely fast Python package installer and resolver, written in Rust
 brew "uv"
 # Verilog simulator
 brew "verilator"
+# Language servers for HTML, CSS, JavaScript, and JSON extracted from vscode
+brew "vscode-langservers-extracted"
 # Internet file retriever
 brew "wget"
+# Language Server for Yaml Files
+brew "yaml-language-server"
 # Shell extension to navigate your filesystem faster
 brew "zoxide"
 # UNIX shell (command interpreter)
@@ -267,6 +317,10 @@ vscode "xyc.vscode-mdx-preview"
 vscode "yzhang.markdown-all-in-one"
 vscode "zignd.html-css-class-completion"
 go "golang.org/x/tools/gopls"
+cargo "vhdl_ls"
+uv "debugpy"
 uv "graphifyy"
 uv "skillspector", source: "git+https://github.com/NVIDIA/skillspector.git"
+npm "@mdx-js/language-server"
+npm "intelephense"
 npm "netlistsvg"
