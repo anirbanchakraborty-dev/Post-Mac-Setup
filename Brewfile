@@ -1,5 +1,5 @@
 # Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
-# regenerated 2026-09-19. Restore with `brew bundle install`.
+# regenerated 2026-10-10. Restore with `brew bundle install`.
 #
 # Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
 # Homebrew 6.x disabled that switch outright, because emitting the one-line
@@ -110,7 +110,7 @@ brew "hyperfine"
 # Verilog simulation and synthesis tool
 brew "icarus-verilog"
 # Interpreted, interactive, object-oriented programming language
-brew "python@3.14"
+brew "python@3.15"
 # Java language specific implementation of the Language Server Protocol
 brew "jdtls"
 # Lightweight and flexible command-line JSON processor
