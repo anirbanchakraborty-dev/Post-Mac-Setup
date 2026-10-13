@@ -39,11 +39,11 @@ is actually on the machine rather than what the package lists say should be.
    `install_binaries_from_tarball`).
 9. **Post-install** — Homebrew bash and zsh into `/etc/shells` and `chsh` to the
    Homebrew zsh, `git lfs install`, interactive Git identity plus non-clobbering
-   defaults, an optional GitHub CLI step, the Rust toolchain, fzf key bindings, a
-   MacTeX PATH check, then Oh My Zsh, Powerlevel10k, and the three zsh plugins.
+   defaults, an optional GitHub CLI step, the Rust toolchain, fzf key bindings (its installer runs with `--no-update-rc`, because the Oh My Zsh `fzf` plugin is what loads them), a
+   MacTeX PATH check, then Oh My Zsh, Powerlevel10k and its settings, and the three zsh plugins. The settings are `p10k.zsh` beside the script, copied to `~/.p10k.zsh`, or downloaded from this repository when the script runs on its own, and only when `~/.p10k.zsh` does not exist.
 10. **Shell config** — writes `~/.zsh_paths`, `~/.zsh_aliases`, `~/.zshrc`,
     `~/.zshenv` and `~/.zprofile` through marker-based injection that preserves
-    whatever the user already had in them.
+    whatever the user already had in them, and takes out, with `remove_block`, any block the script no longer writes. `EDITOR` and `VISUAL` are set to `nvim` here. After it, a Neovim step clones ACH-NEOVIM into `~/.config/nvim` and links `~/.config/ghostty/config.ghostty` to the Ghostty settings inside it, each only when nothing is at that path, and `--skip-editor` skips that step.
 11. **macOS defaults** — stops `.DS_Store` files being written to network and USB
     volumes.
 12. **Cleanup** — `brew cleanup`, then a `Brewfile` snapshot exported next to the
@@ -61,6 +61,8 @@ Post-Mac-Setup/
   CLAUDE.md      — this file
   LICENSE        — MIT
   .gitignore     — .DS_Store and .claude/
+  Brewfile       — snapshot of installed Homebrew packages, written by the cleanup step
+  p10k.zsh       — Powerlevel10k prompt settings, a byte-for-byte copy of the reference Mac's ~/.p10k.zsh
 ```
 
 The cleanup step writes a `Brewfile` into this same directory (not `$HOME`, not a
@@ -88,7 +90,8 @@ with no application anywhere on disk, so when the dump surprises you, check
 | `--skip-extras` | Skip non-Homebrew direct downloads (Microsoft Edge) |
 | `--skip-github` | Skip the GitHub CLI auth and git credential step |
 | `--skip-macos` | Skip the macOS `.DS_Store` defaults |
-| `--skip-shell` | Skip shell config (`.zshrc`, `.zsh_paths`, `.zsh_aliases`, `.zshenv`, `.zprofile`) |
+| `--skip-shell` | Skip shell config (`.zshrc`, `.zsh_paths`, `.zsh_aliases`, `.zshenv`, `.zprofile`) and the prompt settings. On a Mac that had no Homebrew, new shells then lack Homebrew on `PATH`, since the `HOMEBREW-ENV` block is what adds it |
+| `--skip-editor` | Skip cloning ACH-NEOVIM and linking Ghostty's settings |
 | `--no-log` | Don't write a log file |
 
 An unrecognised flag is a hard error rather than a warning.
@@ -155,6 +158,8 @@ nothing installed needs it at run time (`brew uses --installed pkgconf` is
 empty), and Homebrew installs prebuilt bottles without their build dependencies,
 so a bare machine would never get it. It is declared now.
 
+`ON_DEMAND`, the array after `FORMULAE`, is the one package list the script declares and never installs from. It holds the twenty-two compilers, runtimes and tools that ACH-NEOVIM, the Neovim configuration the script clones, offers to install the first time a file needs one: Neovim asks once, naming the package and its rough size, and on a yes runs `brew install` in the background. The array is there so the hub's push checklist accepts a package a yes installed instead of calling it undeclared, and a hub test fails when the array differs from what the configuration's `scripts/on-demand` prints, so keep it sorted, one name per line. Five of the names, `dotnet`, `go`, `llvm`, `r` and `rustup`, are in `FORMULAE` as well, because tools there need them from the start, so those five are installed and stay in the Brewfile. Delete any other `ON_DEMAND` name from the Brewfile after a dump, and keep every one of them out of the README's package tables, which list what the script installs.
+
 ### Casks
 
 | Category | Packages |
@@ -165,7 +170,7 @@ so a bare machine would never get it. It is declared now.
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
-| Terminal | `iterm2` |
+| Terminal | `ghostty` |
 | Networking & security | `tailscale-app` (renamed upstream from `tailscale`), `surfshark` (commercial VPN client) |
 | Browser & messaging | `whatsapp` |
 | Window management | `loop` |
@@ -174,8 +179,7 @@ so a bare machine would never get it. It is declared now.
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text & display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 
-The two Nerd Fonts are not decoration: Powerlevel10k's icons need a patched font,
-and the summary at the end tells the user to point their terminal at one of them.
+The two Nerd Fonts are not decoration: Powerlevel10k's icons need a patched font, and Ghostty's settings, which the Neovim step links into place, name MesloLGS Nerd Font Mono as the terminal's font.
 
 ## Key conventions
 
@@ -191,7 +195,7 @@ under bash 3.2 and 5.x alike. `POSIXLY_CORRECT` is unset before the exec, since
 sh exports it and a fresh bash that inherits it re-enters POSIX mode — that would
 loop forever — with a `MAC_SETUP_REEXEC` sentinel as the backstop. Two
 constraints on this block: it must stay POSIX-parseable, and it must stay **below
-line 20**, because `usage()` prints lines 3–20 of the file as its help text and
+line 21**, because `usage()` prints lines 3–21 of the file as its help text and
 anything inserted above silently truncates `--help`.
 
 **Idempotent.** Already-installed packages are detected with one `brew list`
@@ -434,10 +438,10 @@ array code to that idiom.
 ## Editing guidelines
 
 Package lists are plain Bash arrays — `TAPS`, `TRUST_FORMULAE`, `FORMULAE`,
-`CASKS` — and adding or removing a package means editing one of them and nothing
+`CASKS`, `ON_DEMAND` — and adding or removing a package means editing one of them and nothing
 else. Aliases go in the `ZSH_ALIASES` injection blocks; PATH and environment
 variables go in the `ZSH_PATHS` blocks. `inject_block` and `inject_block_top` are
-the only sanctioned mechanism for writing to a dotfile; never `echo` or `cat`
+the only sanctioned mechanism for writing to a dotfile, and `remove_block` the only one for taking a block out; never `echo` or `cat`
 directly into a shell config.
 
 The injected blocks are single-quoted Bash strings, which has one non-obvious
@@ -491,7 +495,7 @@ dry run does real detection, so it is the cheapest check that the change did not
 break idempotency: every package already on the machine should report "already
 installed", and nothing should report "Would install" for something that is
 plainly present. Then confirm `--help` still prints the full flag list, since the
-usage text is a `sed` range over lines 3–20 of the file and any insertion above
+usage text is a `sed` range over lines 3–21 of the file and any insertion above
 that line silently truncates it. Check that `FAILED_ITEMS` is empty, that no
 dotfile was clobbered, and — for anything touching the injected blocks — open the
 generated `~/.zsh_paths` and confirm no comment inside a single-quoted block

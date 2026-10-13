@@ -1,5 +1,5 @@
 # Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
-# regenerated 2026-10-10. Restore with `brew bundle install`.
+# regenerated 2026-10-12. Restore with `brew bundle install`.
 #
 # Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
 # Homebrew 6.x disabled that switch outright, because emitting the one-line
@@ -15,18 +15,16 @@
 #                  is a declared dependency of the mactex cask, and Homebrew
 #                  marks cask-required formulae installed_on_request, so a dump
 #                  names it even though nobody asked for it by name.
-#   emacs-plus@31  installed on the reference Mac and in neither file, and its
-#                  d12frosted/emacs-plus tap is out of both too. It is the one
-#                  package here that compiles from source instead of arriving
-#                  as a prebuilt bottle, and a source build leans on a compiler
-#                  the same run has only just installed. So it is a documented
-#                  manual step that follows the automated run rather than
-#                  joining it - see the Emacs section of the README. A plain
-#                  `brew bundle dump --force` puts both lines back; delete them
-#                  again, and ship-check.mjs in the hub repo will say so if you
-#                  forget.
+#   ON_DEMAND      the compilers and runtimes mac-setup.sh declares in its
+#                  ON_DEMAND array and never installs. Neovim's ACH-NEOVIM
+#                  configuration offers each the first time a file needs it,
+#                  so a Mac that said yes has some and a dump names them.
+#                  Delete those lines after a dump, so `brew bundle install`
+#                  never installs one up front; ship-check.mjs in the hub repo
+#                  says so if one is left in. A name FORMULAE declares too,
+#                  such as go, is an ordinary line and stays.
 #
-# pkgconf used to be a third difference and is not any more: it is declared
+# pkgconf used to be another difference and is not any more: it is declared
 # in both since 2026-09-13, because nothing installed needs it at run time and
 # a bottle install does not pull in build dependencies.
 #
@@ -37,8 +35,6 @@
 # release tarball now - see the EXTRAS section of mac-setup.sh.
 # Language server for NASM/GAS/GO Assembly
 brew "asm-lsp"
-# Tool for generating GNU Standards-compliant Makefiles
-brew "automake"
 # Open-source, cross-platform JavaScript runtime environment
 brew "node"
 # Pyright fork with various improvements and built-in pylance features
@@ -75,8 +71,6 @@ brew "dtc"
 brew "dust"
 # Language Server and Debugger for Elixir
 brew "elixir-ls"
-# Spellchecker wrapping library
-brew "enchant"
 # Speech synthesizer that supports more than hundred languages and accents
 brew "espeak-ng"
 # Modern, maintained replacement for ls
@@ -101,28 +95,28 @@ brew "git-lfs"
 brew "go"
 # Graph visualization software from AT&T and Bell Labs
 brew "graphviz"
-# Grammar Checker for Developers
-brew "harper"
 # Improved top (interactive process viewer)
 brew "htop"
 # Command-line benchmarking tool
 brew "hyperfine"
 # Verilog simulation and synthesis tool
 brew "icarus-verilog"
-# Interpreted, interactive, object-oriented programming language
-brew "python@3.15"
+# Tools and libraries to manipulate images in select formats
+brew "imagemagick"
 # Java language specific implementation of the Language Server Protocol
 brew "jdtls"
 # Lightweight and flexible command-line JSON processor
 brew "jq"
+# Simple terminal UI for git commands
+brew "lazygit"
 # Next-gen compiler infrastructure
 brew "llvm"
 # Language Server for the Lua language
 brew "lua-language-server"
-# Language Server Protocol for Markdown
-brew "marksman"
-# Another cmake lsp
-brew "neocmakelsp"
+# Ambitious Vim-fork focused on extensibility and agility
+brew "neovim"
+# RSS/Atom feed reader for text terminals
+brew "newsboat"
 # Swiss-army knife of markup format conversion
 brew "pandoc"
 # Package compiler and linker metadata toolkit
@@ -135,6 +129,8 @@ brew "pnpm"
 brew "poppler"
 # Code formatter for JavaScript, CSS, JSON, GraphQL, Markdown, YAML
 brew "prettier"
+# Interpreted, interactive, object-oriented programming language
+brew "python@3.15"
 # Software environment for statistical computing
 brew "r"
 # Search tool like grep and The Silver Searcher
@@ -155,16 +151,18 @@ brew "sby"
 brew "shellcheck"
 # Autoformat shell script source code
 brew "shfmt"
+# Opinionated Lua code formatter
+brew "stylua"
 # Waveform viewer, supporting VCD, FST, or GHW format
 brew "surfer"
 # TOML toolkit written in Rust
 brew "taplo"
-# Implementation of the Language Server Protocol for LaTeX
-brew "texlab"
 # Official tldr client written in Rust
 brew "tlrc"
 # Display directories as trees (with optional color/HTML output)
 brew "tree"
+# Parser generator tool
+brew "tree-sitter-cli"
 # Language Server Protocol implementation for TypeScript wrapping tsserver
 brew "typescript-language-server"
 # Extremely fast Python package installer and resolver, written in Rust
@@ -200,10 +198,10 @@ cask "font-jetbrains-mono-nerd-font"
 cask "font-meslo-lg-nerd-font"
 cask "font-patrick-hand"
 cask "font-poppins"
+# Terminal emulator that uses platform-native UI and GPU acceleration
+cask "ghostty"
 # Vector graphics editor
 cask "inkscape"
-# Terminal emulator as alternative to Apple's Terminal app
-cask "iterm2"
 # Blocks all Keyboard and TouchBar input
 cask "keyboardcleantool"
 # Discover, download, and run local LLMs

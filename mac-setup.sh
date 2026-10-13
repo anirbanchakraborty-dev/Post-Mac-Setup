@@ -16,6 +16,7 @@
 # ║          --skip-github   Skip GitHub CLI auth + git credential setup ║
 # ║          --skip-macos    Skip macOS .DS_Store defaults               ║
 # ║          --skip-shell    Skip shell config (.zshrc, etc.)            ║
+# ║          --skip-editor   Skip the Neovim config and Ghostty link     ║
 # ║          --no-log        Don't save output to a log file             ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 #
@@ -37,8 +38,8 @@
 # fresh bash that inherits it re-enters POSIX mode, which would make this
 # re-exec loop forever. The sentinel is the backstop if that ever fails anyway.
 #
-# Keep this block POSIX-parseable, and keep it BELOW line 20: usage() prints
-# lines 3-20 of this file as the help text.
+# Keep this block POSIX-parseable, and keep it BELOW line 21: usage() prints
+# lines 3-21 of this file as the help text.
 if [ -z "${BASH_VERSION:-}" ] || [ "$(set -o 2>/dev/null | awk '$1 == "posix" { print $2 }')" = "on" ]; then
     if [ -n "${MAC_SETUP_REEXEC:-}" ]; then
         echo "mac-setup.sh: could not get a non-POSIX bash. Run it as: bash $0" >&2
@@ -63,10 +64,11 @@ SKIP_EXTRAS=false
 SKIP_GITHUB=false
 SKIP_MACOS=false
 SKIP_SHELL=false
+SKIP_EDITOR=false
 NO_LOG=false
 
 usage() {
-    sed -n '3,20p' "$0" | sed 's/^# //; s/^#//'
+    sed -n '3,21p' "$0" | sed 's/^# //; s/^#//'
     exit 0
 }
 
@@ -81,6 +83,7 @@ for arg in "$@"; do
         --skip-github)   SKIP_GITHUB=true ;;
         --skip-macos)    SKIP_MACOS=true ;;
         --skip-shell)    SKIP_SHELL=true ;;
+        --skip-editor)   SKIP_EDITOR=true ;;
         --no-log)        NO_LOG=true ;;
         *)
             echo "Unknown option: $arg (try --help)"
@@ -171,29 +174,18 @@ print_summary() {
     if $SCRIPT_COMPLETED; then
         echo -e "${BOLD}Manual steps remaining:${NC}"
         echo ""
-        echo -e "  ${CYAN}1.${NC} ${BOLD}Restart your terminal${NC} (or run: exec zsh)"
+        echo -e "  ${CYAN}•${NC} ${BOLD}Open Ghostty${NC} and use it from now on (or run: exec zsh)."
+        echo "    Its settings, ~/.config/ghostty/config.ghostty, are a link into"
+        echo "    ~/.config/nvim and set MesloLGS Nerd Font Mono, the font the"
+        echo "    prompt's icons need. The prompt's own settings are ~/.p10k.zsh."
         echo ""
-        echo -e "  ${CYAN}2.${NC} ${BOLD}Run 'p10k configure'${NC} to set up the Powerlevel10k prompt."
-        echo "     Choose MesloLGS NF or JetBrainsMono NF as your terminal font."
+        echo -e "  ${CYAN}•${NC} ${BOLD}Verify Homebrew versions are default:${NC}"
+        echo "    which git     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/git"
+        echo "    which python3 → should show ${BREW_PREFIX:-/opt/homebrew}/bin/python3"
+        echo "    which zsh     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/zsh"
+        echo "    which bash    → should show ${BREW_PREFIX:-/opt/homebrew}/bin/bash"
         echo ""
-        echo -e "  ${CYAN}3.${NC} ${BOLD}Set your iTerm2 font:${NC}"
-        echo "     Preferences → Profiles → Text → Font → MesloLGS Nerd Font"
-        echo ""
-        echo -e "  ${CYAN}4.${NC} ${BOLD}Verify Homebrew versions are default:${NC}"
-        echo "     which git     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/git"
-        echo "     which python3 → should show ${BREW_PREFIX:-/opt/homebrew}/bin/python3"
-        echo "     which zsh     → should show ${BREW_PREFIX:-/opt/homebrew}/bin/zsh"
-        echo "     which bash    → should show ${BREW_PREFIX:-/opt/homebrew}/bin/bash"
-        echo ""
-        echo -e "  ${CYAN}5.${NC} ${BOLD}Sign in to apps:${NC} Setapp, Tailscale, etc."
-        echo ""
-        echo -e "  ${CYAN}6.${NC} ${BOLD}Install Emacs, if you want it:${NC}"
-        echo "     brew tap d12frosted/emacs-plus"
-        echo "     brew trust --tap d12frosted/emacs-plus"
-        echo "     brew install emacs-plus@31 --with-native-compilation=aot"
-        echo "     It builds from source, so it is left out of this run and done"
-        echo "     afterwards, once the toolchain above is known good. It needs one"
-        echo "     more pass after the build - see the Emacs section of README.md."
+        echo -e "  ${CYAN}•${NC} ${BOLD}Sign in to apps:${NC} Setapp, Tailscale, etc."
         echo ""
 
         if ! $NO_LOG && [ -n "${LOG_FILE:-}" ]; then
@@ -647,6 +639,7 @@ echo -e "    Extras (direct):   $( $SKIP_EXTRAS   && echo "${YELLOW}SKIP${NC}" |
 echo -e "    GitHub CLI auth:   $( $SKIP_GITHUB  && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}configure${NC}" )"
 echo -e "    macOS defaults:    $( $SKIP_MACOS    && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}apply${NC}" )"
 echo -e "    Shell config:      $( $SKIP_SHELL    && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}configure${NC}" )"
+echo -e "    Editor config:     $( $SKIP_EDITOR   && echo "${YELLOW}SKIP${NC}" || echo "${GREEN}configure${NC}" )"
 echo ""
 
 if ! $DRY_RUN; then
@@ -709,17 +702,11 @@ if ! command -v brew &>/dev/null; then
     # Activate Homebrew in the current session
     eval "$("$BREW_PATH" shellenv)"
 
-    # Persist to shell profiles so it works in new terminals
-    # (the inject_block in .zshrc handles zsh; here we also cover .zprofile
-    #  which is the standard place Homebrew recommends)
-    ZPROFILE="$HOME/.zprofile"
-    BREW_SHELLENV_LINE="eval \"\$(${BREW_PATH} shellenv)\""
-    if [ ! -f "$ZPROFILE" ] || ! grep -qF "$BREW_SHELLENV_LINE" "$ZPROFILE"; then
-        echo "" >> "$ZPROFILE"
-        echo "# Homebrew (added by mac-setup.sh)" >> "$ZPROFILE"
-        echo "$BREW_SHELLENV_LINE" >> "$ZPROFILE"
-        success "Added Homebrew shellenv to $ZPROFILE"
-    fi
+    # New shells get Homebrew from the HOMEBREW-ENV block that the shell config
+    # step writes into ~/.zsh_paths, which ~/.zshenv and ~/.zprofile load, so
+    # nothing is written to ~/.zprofile here and brew shellenv runs once per
+    # shell. With --skip-shell that block is not written: add
+    # eval "$(/opt/homebrew/bin/brew shellenv)" to your own ~/.zprofile then.
 
     success "Homebrew installed and configured"
 else
@@ -881,35 +868,15 @@ fi
 #
 # This check reads and never writes, so it runs under --dry-run too: a dry run
 # is the cheapest place to be told about a tap that is about to break things.
-# One tap is outside TAPS on purpose and is not a finding. It is listed here so
-# that a deliberate choice reads as one, instead of printing the same warning on
-# every run until the warning stops meaning anything.
-MANUAL_TAPS=(
-    "d12frosted/emacs-plus"       # Emacs - documented manual step, see README.md
-)
-
 UNMANAGED_TAPS=()
-MANUAL_TAPS_FOUND=()
 while IFS= read -r t; do
     [ -n "$t" ] || continue
     case "$t" in homebrew/*) continue ;; esac
     for known in ${TAPS[@]+"${TAPS[@]}"}; do
         [ "$t" = "$known" ] && continue 2
     done
-    for expected in "${MANUAL_TAPS[@]}"; do
-        if [ "$t" = "$expected" ]; then
-            MANUAL_TAPS_FOUND+=("$t")
-            continue 2
-        fi
-    done
     UNMANAGED_TAPS+=("$t")
 done < <(brew tap 2>/dev/null || true)
-
-if [ "${#MANUAL_TAPS_FOUND[@]}" -gt 0 ]; then
-    for t in "${MANUAL_TAPS_FOUND[@]}"; do
-        info "tap left out of this script on purpose: $t (documented manual step - see README.md)"
-    done
-fi
 
 if [ "${#UNMANAGED_TAPS[@]}" -gt 0 ]; then
     for t in "${UNMANAGED_TAPS[@]}"; do
@@ -990,10 +957,7 @@ FORMULAE=(
     poppler             # PDF utilities (pdftotext, pdfinfo, pdftoppm, pdfimages)
     pkgconf             # Compiler and linker flags for C libraries (pkg-config)
 
-    # Editor tooling (language servers, formatters and spell checking for Emacs)
-    enchant             # Spell-checking library (jinx calls it through enchant-2)
-    texlab              # LaTeX language server
-    marksman            # Markdown language server
+    # Editor tooling (language servers and formatters, for any editor that starts them)
     basedpyright        # Python language server (a Pyright fork)
     ruff                # Python linter and formatter
     typescript-language-server # TypeScript and JavaScript language server
@@ -1007,19 +971,16 @@ FORMULAE=(
                         # gets no hover at all, and a NASM x86-64 file gets ARM64
                         # documentation for the same mnemonic, with no error.
     dockerfile-language-server # Dockerfile language server
-    neocmakelsp         # CMake language server
     lua-language-server # Lua language server
     ruby-lsp            # Ruby language server (Shopify's)
     jdtls               # Java language server (Eclipse JDT)
     elixir-ls           # Elixir language server
     taplo               # TOML language server and formatter
-    harper              # Grammar checker that runs offline (harper-ls)
     shellcheck          # Shell script linter; bash-language-server calls it
     prettier            # Formatter for JavaScript, TypeScript, CSS, JSON and YAML
     shfmt               # Shell script formatter
-    automake            # Builds the epdfinfo server behind Emacs's pdf-tools
-    direnv              # Per-project environment variables; Emacs reads it through envrc
-    delve               # Go debugger, driven from Emacs by dape
+    direnv              # Per-project environment variables, read from a folder's .envrc
+    delve               # Go debugger (dlv)
     dotnet              # The .NET SDK, which carries the `dotnet tool' installer below
     #
     # Deliberately NOT listed: elixir and ruby. Each is a runtime dependency of
@@ -1029,6 +990,14 @@ FORMULAE=(
     # Declaring them here would put two names in this array that a Brewfile
     # dump never prints, which is the drift the header of that file exists to
     # explain. Same call as gcc above.
+
+    # Neovim and the programs its configuration calls (github.com/anirbanchakraborty-dev/ACH-NEOVIM)
+    neovim              # Neovim, the editor
+    stylua              # Lua formatter, for Neovim's own configuration
+    tree-sitter-cli     # Builds the tree-sitter parsers Neovim highlights with
+    lazygit             # Git in a terminal window, opened from Neovim
+    newsboat            # RSS and Atom feed reader, opened from Neovim
+    imagemagick         # Converts images so Neovim can draw them in Ghostty
 
     # Homebrew TUI
     bbrew               # Bold Brew - TUI for Homebrew (now in homebrew/core)
@@ -1045,18 +1014,6 @@ FORMULAE=(
     # above, but nothing installed needs it at run time (`brew uses --installed
     # pkgconf` is empty), and Homebrew installs bottles without their build
     # dependencies. A bare machine would therefore never get it.
-    #
-    # Deliberately NOT listed, for a different reason: emacs-plus@31, from the
-    # d12frosted/emacs-plus tap. It is the only package this machine has that
-    # compiles from source instead of arriving as a prebuilt bottle, so it is
-    # the only one whose install time is measured in minutes and the only one
-    # that depends on the compiler toolchain this very script has just finished
-    # installing. Putting a source build inside an automated run makes the run
-    # unpredictable and makes its own success a prerequisite for one of its
-    # steps. It is a documented manual step that follows this run instead, when
-    # the toolchain is known good - see the Emacs section of README.md, which
-    # also covers the native-compilation pass the build itself skips. The tap
-    # is named in MANUAL_TAPS above for the same reason.
 )
 
 if $SKIP_FORMULAE; then
@@ -1064,6 +1021,45 @@ if $SKIP_FORMULAE; then
 else
     batch_install formula "${FORMULAE[@]}"
 fi
+
+# ─────────────────────────────────────────────────────────────────────
+# ON_DEMAND (declared here, never installed by this script)
+# ─────────────────────────────────────────────────────────────────────
+# The compilers and runtimes that ACH-NEOVIM, the Neovim configuration this
+# Mac runs (github.com/anirbanchakraborty-dev/ACH-NEOVIM), offers to install
+# the first time a file needs one. Neovim asks once, naming the package and
+# its rough size, and on a yes runs `brew install` in the background. This
+# script installs none of them and the Brewfile leaves them out, so a new Mac
+# starts without any. The list is here so the hub's ship-check.mjs accepts
+# one that a yes put on this Mac instead of calling it undeclared, and a hub
+# test fails when it differs from what the configuration's scripts/on-demand
+# prints, so keep it sorted, one name per line. dotnet, go, llvm, r and
+# rustup are in FORMULAE as well, because tools above need them from the
+# start; those five are installed, and kept in the Brewfile, for that reason.
+ON_DEMAND=(
+    coursier            # Scala's installer
+    dart-sdk            # Dart
+    dotnet              # .NET, for C# and F#
+    elan-init           # Lean's installer
+    elixir              # Elixir
+    erlang              # Erlang
+    fish                # fish shell
+    ghcup               # Haskell's installer
+    gleam               # Gleam
+    go                  # Go
+    julia               # Julia
+    llvm                # LLVM: clang and clangd, for C and C++
+    nixfmt              # Nix's formatter, since Mason's is built for Linux only
+    nushell             # Nushell
+    opam                # OCaml's package manager
+    openjdk@21          # Java 21
+    php                 # PHP
+    powershell          # PowerShell
+    r                   # R
+    ruby                # Ruby, newer than the copy macOS ships
+    rustup              # Rust's installer
+    zig                 # Zig
+)
 
 # ─────────────────────────────────────────────────────────────────────
 # CASKS (GUI apps & fonts - brew install --cask)
@@ -1098,7 +1094,7 @@ CASKS=(
     nx-studio           # Nikon viewing/processing/editing suite (pkg install, no .app artifact)
 
     # Terminal
-    iterm2              # Terminal emulator
+    ghostty             # Terminal emulator; draws images and runs Neovim
 
     # Networking & security
     tailscale-app       # Mesh VPN (cask renamed from 'tailscale' upstream)
@@ -1116,7 +1112,7 @@ CASKS=(
     # System maintenance
     keyboardcleantool   # Blocks keyboard and Touch Bar input while you clean the keys
 
-    # Fonts (Nerd Font patched - needed for Powerlevel10k icons)
+    # Fonts (Nerd Font patched - Powerlevel10k's icons need them; Ghostty's settings name Meslo and VS Code's name JetBrains Mono)
     font-meslo-lg-nerd-font
     font-jetbrains-mono-nerd-font
 
@@ -1202,12 +1198,12 @@ section "Installing uv Tool Global Packages"
 # already present - the same early-return bug batch_install had until
 # 2026-08-22. A dry run that cannot tell present from missing reports nothing.
 # Each entry is `<PyPI package>|<what it is for>'. debugpy is here rather than
-# in a project's own virtual environment because Emacs's dape runs the adapter
+# in a project's own virtual environment because a debugger runs the adapter
 # out of this tool environment and gives the debugged program a different
 # interpreter, so one install serves every project.
 UV_TOOLS=(
     "graphifyy|knowledge-graph builder for the /graphify skill"
-    "debugpy|Python debug adapter, driven from Emacs by dape"
+    "debugpy|Python debug adapter, run out of its own tool environment"
 )
 
 for entry in "${UV_TOOLS[@]}"; do
@@ -1238,7 +1234,7 @@ done
 # ─────────────────────────────────────────────────────────────────────
 section "Installing .NET Global Tools"
 
-# csharp-ls is the C# language server Emacs's eglot starts. It is a .NET tool
+# csharp-ls is a C# language server. It is a .NET tool
 # rather than a Homebrew formula because none exists, and `dotnet tool' puts it
 # in ~/.dotnet/tools, which the PATH block below adds.
 if ! command -v dotnet &>/dev/null; then
@@ -1677,11 +1673,13 @@ section "Post-Install: fzf Key Bindings"
 
 FZF_INSTALL="$BREW_PREFIX/opt/fzf/install"
 if [ -f "$FZF_INSTALL" ]; then
+    # --no-update-rc: the fzf plugin in OH-MY-ZSH-CONFIG loads the key bindings,
+    # so the installer must not add a second loader to ~/.zshrc.
     if $DRY_RUN; then
-        info "[DRY RUN] Would run $FZF_INSTALL --all --no-bash --no-fish --key-bindings --completion --update-rc"
+        info "[DRY RUN] Would run $FZF_INSTALL --all --no-bash --no-fish --key-bindings --completion --no-update-rc"
     else
         info "Installing fzf key bindings and fuzzy completion..."
-        "$FZF_INSTALL" --all --no-bash --no-fish --key-bindings --completion --update-rc
+        "$FZF_INSTALL" --all --no-bash --no-fish --key-bindings --completion --no-update-rc
         success "fzf key bindings installed"
     fi
 else
@@ -1737,6 +1735,28 @@ if [ ! -d "$P10K_DIR" ]; then
     fi
 else
     success "Powerlevel10k already installed"
+fi
+
+# The prompt's settings: the reference Mac's ~/.p10k.zsh, shipped beside this
+# script as p10k.zsh. Copied from there, or downloaded from the public repo when
+# the script runs on its own, and only when ~/.p10k.zsh does not exist yet.
+P10K_CONFIG="$HOME/.p10k.zsh"
+P10K_SHIPPED="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/p10k.zsh"
+P10K_URL="https://raw.githubusercontent.com/anirbanchakraborty-dev/Post-Mac-Setup/main/p10k.zsh"
+if [ -e "$P10K_CONFIG" ]; then
+    success "~/.p10k.zsh already present - left as it is"
+elif $DRY_RUN; then
+    info "[DRY RUN] Would install ~/.p10k.zsh"
+elif [ -f "$P10K_SHIPPED" ]; then
+    cp "$P10K_SHIPPED" "$P10K_CONFIG"
+    success "Installed ~/.p10k.zsh from $P10K_SHIPPED"
+elif curl -fsSL "$P10K_URL" -o "$P10K_CONFIG.download"; then
+    mv "$P10K_CONFIG.download" "$P10K_CONFIG"
+    success "Installed ~/.p10k.zsh from $P10K_URL"
+else
+    rm -f "$P10K_CONFIG.download"
+    warn "Could not download $P10K_URL - Powerlevel10k will ask its own questions"
+    FAILED_ITEMS+=("~/.p10k.zsh (download failed)")
 fi
 
 # ─────────────────────────────────────────────────────────────────────
@@ -1866,6 +1886,25 @@ inject_block_top() {
         echo ""
         cat "$target_file"
     } > "$tmpfile"
+    mv "$tmpfile" "$target_file"
+}
+
+# ── Helper: remove a block this script no longer writes ──────────────
+# Usage: remove_block "FILE" "BLOCK_ID"
+remove_block() {
+    local target_file="$1"
+    local block_id="$2"
+    local begin_marker="### BEGIN $block_id (managed by mac-setup.sh - do not edit)"
+    local end_marker="### END $block_id"
+
+    grep -qF "$begin_marker" "$target_file" 2>/dev/null || return 0
+    local tmpfile
+    tmpfile="$(mktemp)"
+    awk -v bm="$begin_marker" -v em="$end_marker" '
+        $0 == bm { skip=1; next }
+        $0 == em { skip=0; next }
+        !skip { print }
+    ' "$target_file" > "$tmpfile"
     mv "$tmpfile" "$target_file"
 }
 
@@ -2029,9 +2068,9 @@ if [[ -z "${DOTNET_ROOT:-}" && -d "$HOMEBREW_PREFIX/opt/dotnet/libexec" ]]; then
 fi'
 
 inject_block "$ZSH_PATHS" "EDITOR-CONFIG" \
-'# Default editor
-export EDITOR='\''code --wait'\''
-export VISUAL='\''code --wait'\'''
+'# Default editor: Neovim, with the ACH-NEOVIM configuration in ~/.config/nvim
+export EDITOR='\''nvim'\''
+export VISUAL='\''nvim'\'''
 
 inject_block "$ZSH_PATHS" "FZF-ENV" \
 '# fzf: use ripgrep as default file finder if available
@@ -2048,12 +2087,14 @@ info "Configuring ~/.zsh_aliases ..."
 
 inject_block "$ZSH_ALIASES" "EZA-ALIASES" \
 '# eza - modern ls replacement with icons and git status
+# --icons=auto and --color=auto: icons and colour in a terminal window only, so
+# a pipe or a file gets plain names with no escape codes in them.
 if command -v eza &>/dev/null; then
-  alias ls='\''eza --icons --color=always --group-directories-first'\''
-  alias ll='\''eza -l --icons --color=always --group-directories-first --git --time-style=long-iso'\''
-  alias la='\''eza -la --icons --color=always --group-directories-first --git --time-style=long-iso'\''
-  alias lt='\''eza -l --sort=modified --icons --color=always --group-directories-first --git --time-style=long-iso'\''
-  alias tree='\''eza --tree --icons --color=always --group-directories-first'\''
+  alias ls='\''eza --icons=auto --color=auto --group-directories-first'\''
+  alias ll='\''eza -l --icons=auto --color=auto --group-directories-first --git --time-style=long-iso'\''
+  alias la='\''eza -la --icons=auto --color=auto --group-directories-first --git --time-style=long-iso'\''
+  alias lt='\''eza -l --sort=modified --icons=auto --color=auto --group-directories-first --git --time-style=long-iso'\''
+  alias tree='\''eza --tree --icons=auto --color=auto --group-directories-first'\''
 fi'
 
 inject_block "$ZSH_ALIASES" "BAT-ALIASES" \
@@ -2141,10 +2182,10 @@ if command -v zoxide &>/dev/null; then
   eval "$(zoxide init zsh)"
 fi'
 
-# fzf source
-inject_block "$ZSHRC" "FZF-SOURCE" \
-'# fzf key bindings and fuzzy completion
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh'
+# fzf: the fzf plugin in OH-MY-ZSH-CONFIG loads the key bindings and the
+# completion. FZF-SOURCE loaded them a second time, so it is taken out of any
+# ~/.zshrc an earlier run wrote it into.
+remove_block "$ZSHRC" "FZF-SOURCE"
 
 # Shell history options
 inject_block "$ZSHRC" "SHELL-OPTIONS" \
@@ -2157,7 +2198,7 @@ setopt SHARE_HISTORY'
 
 # P10k config sourcing (should be near the bottom)
 inject_block "$ZSHRC" "P10K-SOURCE" \
-'# To customize prompt, run: p10k configure
+'# Powerlevel10k prompt settings, which mac-setup.sh installs when absent
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh'
 
 # ═════════════════════════════════════════════════════════════════════
@@ -2211,6 +2252,50 @@ echo "    ~/.zprofile    - re-sources it after the macOS path_helper reorders PA
 fi  # end DRY_RUN guard around dotfile writes
 
 fi  # end SKIP_SHELL
+
+# ─────────────────────────────────────────────────────────────────────
+# POST-INSTALL: NEOVIM CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────
+# ACH-NEOVIM is the Neovim configuration, and its repository also holds the
+# settings for Ghostty, the terminal it runs in. Both steps leave an existing
+# ~/.config/nvim or ~/.config/ghostty/config.ghostty exactly as they find it.
+section "Post-Install: Neovim Configuration"
+
+NVIM_CONFIG="$HOME/.config/nvim"
+NVIM_REPO="https://github.com/anirbanchakraborty-dev/ACH-NEOVIM"
+GHOSTTY_CONFIG="$HOME/.config/ghostty/config.ghostty"
+GHOSTTY_SOURCE="$NVIM_CONFIG/ghostty/config.ghostty"
+if $SKIP_EDITOR; then
+    warn "Skipping the Neovim configuration and Ghostty settings (--skip-editor)"
+else
+    if [ -e "$NVIM_CONFIG" ] || [ -L "$NVIM_CONFIG" ]; then
+        success "~/.config/nvim already present - left as it is"
+    elif $DRY_RUN; then
+        info "[DRY RUN] Would git clone $NVIM_REPO -> $NVIM_CONFIG"
+    else
+        info "Cloning ACH-NEOVIM..."
+        mkdir -p "$HOME/.config"
+        if git clone "$NVIM_REPO" "$NVIM_CONFIG"; then
+            success "ACH-NEOVIM cloned to ~/.config/nvim"
+        else
+            warn "Failed to clone $NVIM_REPO"
+            FAILED_ITEMS+=("ACH-NEOVIM (git clone)")
+        fi
+    fi
+
+    if [ -e "$GHOSTTY_CONFIG" ] || [ -L "$GHOSTTY_CONFIG" ]; then
+        success "~/.config/ghostty/config.ghostty already present - left as it is"
+    elif $DRY_RUN; then
+        info "[DRY RUN] Would link $GHOSTTY_CONFIG -> $GHOSTTY_SOURCE"
+    elif [ -f "$GHOSTTY_SOURCE" ]; then
+        mkdir -p "$(dirname "$GHOSTTY_CONFIG")"
+        ln -s "$GHOSTTY_SOURCE" "$GHOSTTY_CONFIG"
+        success "Linked ~/.config/ghostty/config.ghostty to the copy in ~/.config/nvim"
+    else
+        warn "$GHOSTTY_SOURCE not found - Ghostty keeps its default settings"
+        FAILED_ITEMS+=("Ghostty settings ($GHOSTTY_SOURCE missing)")
+    fi
+fi
 
 # ─────────────────────────────────────────────────────────────────────
 # POST-INSTALL: macOS SYSTEM DEFAULTS

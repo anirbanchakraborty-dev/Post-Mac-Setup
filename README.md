@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 21 GUI apps and 11 fonts, a configured zsh, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 21 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -34,7 +34,7 @@ Three things that usually appear as separate manual steps in a new-Mac guide are
 
 **Xcode Command Line Tools.** Homebrew and many formulae need them. The script checks `xcode-select -p`, and if the toolchain is absent it runs `xcode-select --install`, which returns immediately and pops a GUI installer. It then polls every five seconds until the toolchain is actually present, rather than asking you to press a key when the window closes. You do not run `xcode-select --install` yourself.
 
-**Homebrew.** If `brew` is not on `PATH`, the script runs the official Homebrew installer, works out whether the prefix is `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel), activates it for the current session, and appends the `brew shellenv` line to `~/.zprofile` so new terminals find it too.
+**Homebrew.** If `brew` is not on `PATH`, the script runs the official Homebrew installer, works out whether the prefix is `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel), activates it for the current session, and leaves new terminals to the shell step: the `HOMEBREW-ENV` block that step writes into `~/.zsh_paths`, which every new shell reads, puts Homebrew on `PATH`. With `--skip-shell` that block is not written, so add `eval "$(/opt/homebrew/bin/brew shellenv)"` (or `/usr/local/bin/brew` on Intel) to your own `~/.zprofile`.
 
 **Your git identity.** A fresh Mac has no `user.name` or `user.email`, and every commit fails until it does. The script prompts for both and sets them globally. If they are already set it shows you what they are and asks whether to change them, so a rerun does not clobber them. It also sets `init.defaultBranch=main`, `pull.rebase=false`, and `core.autocrlf=input`, but only where you have not already chosen something else.
 
@@ -83,16 +83,17 @@ Two detection details are worth knowing because they are where naive "is it inst
 | RISC-V toolchain | `riscv64-elf-gcc`, `dtc` |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils`, `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom`, `hyperfine`, `difftastic` |
 | Media and audio | `ffmpeg`, `espeak-ng` |
-| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler`, `pkgconf`, `automake` |
-| Language servers | `texlab`, `marksman`, `basedpyright`, `typescript-language-server`, `bash-language-server`, `vscode-langservers-extracted`, `yaml-language-server`, `asm-lsp`, `dockerfile-language-server`, `neocmakelsp`, `lua-language-server`, `ruby-lsp`, `jdtls`, `elixir-ls`, `taplo` |
-| Linting, formatting and grammar | `ruff`, `prettier`, `shfmt`, `shellcheck`, `harper`, `enchant` |
+| Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler`, `pkgconf` |
+| Language servers | `basedpyright`, `typescript-language-server`, `bash-language-server`, `vscode-langservers-extracted`, `yaml-language-server`, `asm-lsp`, `dockerfile-language-server`, `lua-language-server`, `ruby-lsp`, `jdtls`, `elixir-ls`, `taplo` |
+| Linting and formatting | `ruff`, `prettier`, `shfmt`, `shellcheck` |
 | Debugging and project environments | `delve`, `direnv` |
 | .NET SDK | `dotnet` |
+| Neovim | `neovim`, `stylua`, `tree-sitter-cli`, `lazygit`, `newsboat`, `imagemagick` |
 | Homebrew TUI | `bbrew` |
 
 `sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, `pkgconf` supplies the `pkg-config` command that build scripts use to find C libraries, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
 
-The language-server block exists for an editor rather than for the shell, and a few entries are not obvious. `shellcheck` is listed because `bash-language-server` shells out to it and reports almost nothing when it is absent, which looks like a working server rather than a missing dependency. `harper` is a grammar checker that runs entirely offline. `enchant` is the spell-checking library an editor calls through `enchant-2` rather than a command anyone runs. `dotnet` is here for the SDK, which carries the `dotnet tool` installer the next section uses, not because anything builds C# on this machine. Two runtimes are deliberately absent from the list: `elixir` and `ruby` each arrive as a runtime dependency of the language server above it, so a bare machine gets both without being asked, and Homebrew does not mark a dependency as installed on request.
+The language-server block exists for the editor described under [The Editor](#the-editor) rather than for the shell, and a few entries are not obvious. `shellcheck` is listed because `bash-language-server` shells out to it and reports almost nothing when it is absent, which looks like a working server rather than a missing dependency. `dotnet` is here for the SDK, which carries the `dotnet tool` installer the next section uses, not because anything builds C# on this machine. The servers for LaTeX, Markdown and CMake, and the grammar checker, are not here at all: the editor installs those itself through Mason, its own package manager. Two runtimes are deliberately absent from the list: `elixir` and `ruby` each arrive as a runtime dependency of the language server above it, so a bare machine gets both without being asked, and Homebrew does not mark a dependency as installed on request.
 
 ### GUI apps and fonts (32 casks)
 
@@ -104,7 +105,7 @@ The language-server block exists for an editor rather than for the shell, and a 
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
-| Terminal | `iterm2` |
+| Terminal | `ghostty` |
 | Networking and security | `tailscale-app`, `surfshark` |
 | Browser and messaging | `whatsapp` |
 | Window management | `loop` |
@@ -113,7 +114,7 @@ The language-server block exists for an editor rather than for the shell, and a 
 | Fonts (prompt) | `font-meslo-lg-nerd-font`, `font-jetbrains-mono-nerd-font` |
 | Fonts (text and display) | `font-inter`, `font-poppins`, `font-archivo`, `font-archivo-black`, `font-anton`, `font-bebas-neue`, `font-caveat`, `font-patrick-hand`, `font-architects-daughter` |
 
-`mactex` is the full TeX Live distribution and is by far the largest item in the run. `nx-studio` installs from a `.pkg` and leaves no `.app` artifact, so it is exempt from the on-disk verification above. The two Nerd Fonts are patched fonts, needed for the Powerlevel10k prompt's icons to render.
+`mactex` is the full TeX Live distribution and is by far the largest item in the run. `nx-studio` installs from a `.pkg` and leaves no `.app` artifact, so it is exempt from the on-disk verification above. The two Nerd Fonts are patched fonts, needed for the Powerlevel10k prompt's icons to render, and Ghostty's settings, which the editor step links into place, name MesloLGS Nerd Font Mono as the terminal's font.
 
 ### Taps
 
@@ -124,8 +125,6 @@ Three taps have passed through it and none has stayed. `valkyrie00/bbrew` left w
 Each tap is **trusted** with `brew trust --tap` immediately after it is added. Recent Homebrew sets `$HOMEBREW_REQUIRE_TAP_TRUST` by default and refuses to load formulae from untrusted third-party taps: it prints a skip notice and leaves the package uninstalled, so without this a tapped package silently never arrives and `brew upgrade` ignores it too. Trust is granted at tap level rather than per formula, because the same setting also gates the commands that evaluate every formula and cask, which is what the `brew bundle dump` in the cleanup step does. The step is guarded on `brew trust` existing at all, since older Homebrew lacks the subcommand and does not enforce trust either way. Afterwards each tapped package is resolved with `brew info` as a verification pass, so a typo in a tap name or a tap that failed to clone surfaces as a reported failure instead of a package that quietly never installs. Both the tap list and the verification list are expanded as `${ARR[@]+"${ARR[@]}"}`, not `"${ARR[@]}"`: on a Mac with no Homebrew yet, `/usr/bin/env bash` finds the system bash 3.2, which treats the plain form on an empty array as an unbound variable under `set -u` and kills the run. That is a failure only a clean machine can have, which is exactly the machine this script is for.
 
 Finally, the script **reports every third-party tap on the machine that it does not manage**: it walks `brew tap`, skips anything under `homebrew/`, and warns for each remaining tap missing from `TAPS`. It only reads, so it runs under `--dry-run` too. A script that only ever *adds* taps is blind to the ones it did not add, and that blindness is how a second stale tap went unnoticed on the reference machine — tapped at some point, nothing installed from it, emitting a deprecation warning on every `brew` command. The check warns rather than untapping, because removing a tap can orphan a package that is genuinely in use, and that call belongs to a person.
-
-One tap is outside `TAPS` on purpose and is reported as such rather than warned about. `d12frosted/emacs-plus` carries `emacs-plus@31`, which is installed by hand after the run for the reasons under [Emacs](#emacs) below. A warning that fires on every run for a settled decision stops being read, and then the next real one is missed too.
 
 ### Outside Homebrew
 
@@ -153,6 +152,7 @@ Formulae and casks are each installed in a single batched `brew install` call ra
 --skip-github     Skip GitHub CLI auth + git credential setup
 --skip-macos      Skip macOS .DS_Store defaults
 --skip-shell      Skip shell config (.zshrc, etc.)
+--skip-editor     Skip the Neovim configuration and Ghostty's settings
 --no-log          Don't save output to a log file
 ```
 
@@ -163,8 +163,8 @@ Formulae and casks are each installed in a single batched `brew install` call ra
 # CLI tools only, no GUI apps
 ./mac-setup.sh --skip-casks
 
-# Packages only: leave the shell and macOS settings alone
-./mac-setup.sh --skip-shell --skip-macos
+# Packages only: leave the shell, the editor and macOS settings alone
+./mac-setup.sh --skip-shell --skip-editor --skip-macos
 
 # Rerun and also upgrade what is already installed
 ./mac-setup.sh --upgrade
@@ -176,7 +176,7 @@ The script insists on running under a real bash, and re-execs itself if it was n
 
 ## What It Configures in Your Shell
 
-Skippable in full with `--skip-shell`. Every managed block is wrapped in `### BEGIN <ID>` / `### END <ID>` markers, and anything you write outside those markers is preserved across reruns. Existing files are backed up with a timestamp first.
+Skippable in full with `--skip-shell`. Every managed block is wrapped in `### BEGIN <ID>` / `### END <ID>` markers, and anything you write outside those markers is preserved across reruns. Existing files are backed up with a timestamp first. Anything you change *inside* a block is not kept: the next run writes the block back as the script has it, and a block the script no longer writes is taken out. `--skip-shell` also skips the `HOMEBREW-ENV` block, the one that puts Homebrew on `PATH` for new shells.
 
 **Five files, and the split is deliberate.**
 
@@ -196,13 +196,23 @@ Two consequences of that are worth knowing before they surprise you. First, `cla
 
 LLVM's build flags are exported as `LLVM_LDFLAGS` and `LLVM_CPPFLAGS`, not as bare `LDFLAGS` and `CPPFLAGS`. Under the bare names every `configure` run, make implicit rule, setuptools C-extension build, and `node-gyp` invocation in every login shell would inherit LLVM's header and library search paths whether it wanted them or not. Opt in at the point of use: `LDFLAGS="$LLVM_LDFLAGS" CPPFLAGS="$LLVM_CPPFLAGS" ./configure`.
 
-**Prompt and plugins.** Oh My Zsh is installed unattended (keeping your existing `.zshrc`), with the Powerlevel10k theme and the `git`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, `zsh-completions`, and `fzf` plugins. `fzf`'s key bindings and fuzzy completion are installed, with `ripgrep` as its default file finder. `zoxide` is initialised, giving you `z` and `zi`.
+**Prompt and plugins.** Oh My Zsh is installed unattended (keeping your existing `.zshrc`), with the Powerlevel10k theme and the `git`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, `zsh-completions`, and `fzf` plugins. The prompt's settings ship beside the script as `p10k.zsh`, and the run copies them to `~/.p10k.zsh` only when you have no such file, so a prompt you made with `p10k configure` stays yours. `fzf`'s key bindings and fuzzy completion come from the `fzf` plugin, with `ripgrep` as its default file finder, and fzf's own installer runs with `--no-update-rc`, so nothing loads the bindings a second time. `zoxide` is initialised, giving you `z` and `zi`.
 
-**Aliases.** `eza` replaces `ls` (plus `ll`, `la`, `lt`, and `tree`), `bat` replaces `cat`, `fd` replaces `find`, `dust` replaces `du`, `bottom`'s `btm` replaces `top`, and `difftastic`'s `difft` replaces `diff`. There are also directory hops (`..`, `...`, `....`), `mkdir -p` by default, `df -h`, `ports` for listening sockets, `myip`, `reload`, and short git commands (`gs`, `gd`, `gds`, `glog`).
+**Aliases.** `eza` replaces `ls` (plus `ll`, `la`, `lt`, and `tree`, all run with `--icons=auto --color=auto`, so piped output carries no colour codes), `bat` replaces `cat`, `fd` replaces `find`, `dust` replaces `du`, `bottom`'s `btm` replaces `top`, and `difftastic`'s `difft` replaces `diff`. There are also directory hops (`..`, `...`, `....`), `mkdir -p` by default, `df -h`, `ports` for listening sockets, `myip`, `reload`, and short git commands (`gs`, `gd`, `gds`, `glog`).
 
 **Login shell and Git LFS.** Homebrew's `bash` and `zsh` are added to `/etc/shells`, Homebrew `zsh` is set as your login shell with `chsh`, and `git lfs install` is run.
 
 **macOS defaults.** One setting, skippable with `--skip-macos`: `.DS_Store` files are prevented on network and USB volumes.
+
+## The Editor
+
+The run sets up [Neovim](https://neovim.io) with [ACH-NEOVIM](https://github.com/anirbanchakraborty-dev/ACH-NEOVIM), the configuration the reference machine uses. After the shell step it clones that repository into `~/.config/nvim`, and links `~/.config/ghostty/config.ghostty`, the settings file of the [Ghostty](https://ghostty.org) terminal, to the copy inside it. Each happens only when nothing is at that path yet, so a configuration you already have is left alone, and `--skip-editor` skips the step. The shell step sets `EDITOR` and `VISUAL` to `nvim` in `~/.zsh_paths`.
+
+The **Neovim** row of the CLI tools table is what that configuration calls. `stylua` formats its Lua, `tree-sitter-cli` builds the parsers it highlights with, `lazygit` and `newsboat` open in a window over the editor, and `imagemagick` lets it draw images inside Ghostty. The language servers, linters and debugger in the rows above serve the same editor, and the servers it needs beyond those it installs itself through Mason, its own package manager.
+
+Some of the languages it supports need a compiler, a runtime or a formatter as well, and the script does not install those up front. It lists them in an array of their own, `ON_DEMAND`, which it declares and never installs from: `coursier` (Scala's installer), `dart-sdk`, `dotnet` (.NET, for C# and F#), `elan-init` (Lean's installer), `elixir`, `erlang`, `fish`, `ghcup` (Haskell's installer), `gleam`, `go`, `julia`, `llvm` (clang and clangd, for C and C++), `nixfmt` (Nix's formatter), `nushell`, `opam` (OCaml's package manager), `openjdk@21`, `php`, `powershell`, `r`, `ruby`, `rustup` (Rust's installer) and `zig`. The first time a file needs one, Neovim asks once, naming the package and its rough size, and on a yes runs `brew install` in the background. Seven are on a new Mac anyway: `dotnet`, `go`, `llvm`, `r` and `rustup` are in the main list because tools in the tables need them from the start, and `elixir` and `ruby` arrive as dependencies of their language servers. The other fifteen wait for a yes, and the `Brewfile` leaves them out, so `brew bundle install` never installs one either.
+
+How the configuration is put together, and why, is the subject of [a post of its own](https://dranirbanchakraborty.com/blog/ach-neovim).
 
 ## Logs and Output
 
@@ -216,52 +226,11 @@ The cleanup step runs `brew cleanup` and exports a `Brewfile` snapshot of everyt
 
 The script prints these itself when it finishes, in this order:
 
-- Restart your terminal, or run `exec zsh`.
-- Run `p10k configure` to set up the prompt, choosing MesloLGS NF or JetBrainsMono NF as the terminal font.
-- Set the iTerm2 font: Preferences → Profiles → Text → Font → MesloLGS Nerd Font.
+- Open Ghostty and use it from now on, or run `exec zsh`. Its settings, `~/.config/ghostty/config.ghostty`, are a link into `~/.config/nvim` and set MesloLGS Nerd Font Mono, the font the prompt's icons need. With `--skip-editor` there is no link, so set that font in Ghostty yourself.
 - Confirm the Homebrew versions are winning: `which git`, `which python3`, `which zsh`, `which bash` should all point inside the Homebrew prefix.
 - Sign in to the apps that need accounts.
-- Install Emacs, if you want it. See below.
 
 And, on this repository's path, the GitHub step from the quick start above: `gh auth login` followed by `gh auth setup-git`.
-
-### Emacs
-
-Emacs is the one package on the reference machine that this script deliberately does not install, and the reason is worth stating rather than leaving as a gap in the lists.
-
-`emacs-plus@31` comes from the `d12frosted/emacs-plus` tap and it compiles from source instead of arriving as a prebuilt bottle. That makes it the only package here whose install time is measured in minutes rather than seconds, and the only one that depends on the compiler toolchain this very script has just finished installing. A source build placed inside an automated run turns a predictable fifteen minutes into an unpredictable hour, and makes the run's own success a prerequisite for one of its own steps. So it sits outside the run, afterwards, when the toolchain is known good:
-
-```bash
-brew tap d12frosted/emacs-plus
-brew trust --tap d12frosted/emacs-plus
-brew install emacs-plus@31 --with-native-compilation=aot
-```
-
-Neither the tap nor the formula belongs in `mac-setup.sh` or in the `Brewfile`. A plain `brew bundle dump --force` will put both lines back into the Brewfile; delete them again.
-
-**Emacs needs one more pass after the build.** The 31.1 release tarball ships prebuilt byte-code whose timestamps are newer than its own `.el` sources, so `make` decides there is nothing to compile and the ahead-of-time native compilation the build was configured for never runs. `--with-native-compilation=aot` governs *how* Lisp is compiled when it is compiled; it cannot force a rebuild `make` has already ruled unnecessary. What you get is an Emacs that native-compiles lazily at runtime instead of one that arrives compiled. Running the pass by hand fixes it:
-
-```bash
-emacs --batch --eval '(progn (require (quote comp)) (require (quote comp-run)) (setq native-comp-async-report-warnings-errors nil) (native-compile-async (expand-file-name "lisp" (file-name-directory (directory-file-name data-directory))) (quote recursively)) (while (or comp-files-queue (> (comp--async-runnings) 0)) (sleep-for 1)))'
-```
-
-That took two and a half minutes on an M5 Pro and wrote 1,616 `.eln` files. It is idempotent — anything that already has a native build is left alone — and it writes into your own eln cache rather than into the keg — `~/.emacs.d/eln-cache/` on a machine with no Emacs configuration yet, or `~/.config/emacs/eln-cache/` if you already keep your configuration there and have no `~/.emacs.d`, so a `brew reinstall` of the same version does not undo it. An upgrade to a new Emacs version does, because the cache is keyed by version, so run it again after one.
-
-**Nothing shows up in the launcher, either.** `emacs-plus` installs `Emacs.app` and `Emacs Client.app` inside the keg and leaves `/Applications` alone, so there is no icon to click. On macOS 26 and later there is no Launchpad — the launcher is Spotlight's Apps view, and that lists an entry only once LaunchServices has indexed a real application bundle. Both obvious fixes were measured on 2026-09-15 and both fail:
-
-- A **symlink** into `/Applications` is not indexed at all. Spotlight returns nothing for it while happily resolving other apps in the same folder.
-- A **Finder alias** is indexed, but as kind `Alias` rather than `Application` — a document that points at an app, so the Apps view still does not list it.
-
-Only a real copy registers as an application bundle. That is what the formula's own caveat recommends, and `ditto` preserves the code signature where `cp` can disturb it:
-
-```bash
-ditto /opt/homebrew/opt/emacs-plus@31/Emacs.app /Applications/Emacs.app
-ditto "/opt/homebrew/opt/emacs-plus@31/Emacs Client.app" "/Applications/Emacs Client.app"
-```
-
-The copies do not update themselves, and that is the part that bites months later. `Emacs.app`'s executable hardcodes the *versioned* Cellar path, and `Emacs Client.app`'s AppleScript hardcodes a versioned `emacsclient`. A `brew upgrade` removes that directory, and both copies break while their icons sit in the launcher looking perfectly fine — nothing announces it. Re-run both commands after any upgrade or reinstall, alongside the compilation pass above, since the same operations undo both.
-
-Of the two, `Emacs Client.app` is the one worth keeping in the Dock. It opens a frame against an already-running daemon, so it appears immediately instead of starting Emacs from cold.
 
 ## File Structure
 
@@ -272,9 +241,10 @@ Post-Mac-Setup/
   CLAUDE.md      context for AI coding assistants
   LICENSE        MIT
   Brewfile       generated by the run: a snapshot of installed packages
+  p10k.zsh       Powerlevel10k prompt settings, copied to ~/.p10k.zsh when absent
 ```
 
-Package lists are plain Bash arrays named `TAPS`, `FORMULAE`, and `CASKS`. Adding or removing a package means editing an array, and nothing else. The exception is the direct downloads, which are a few lines each in the extras section rather than an array entry, because each one needs its own way of finding the current version.
+Package lists are plain Bash arrays named `TAPS`, `FORMULAE`, `CASKS`, and `ON_DEMAND`, the last of which the script declares and never installs from. Adding or removing a package means editing an array, and nothing else. The exception is the direct downloads, which are a few lines each in the extras section rather than an array entry, because each one needs its own way of finding the current version.
 
 ## License and Forking
 
