@@ -20,7 +20,7 @@
 #                  configuration offers each the first time a file needs it,
 #                  so a Mac that said yes has some and a dump names them.
 #                  Delete those lines after a dump, so `brew bundle install`
-#                  never installs one up front; ship-check.mjs in the hub repo
+#                  never installs one up front; a check run before each push
 #                  says so if one is left in. A name FORMULAE declares too,
 #                  such as go, is an ordinary line and stays.
 #

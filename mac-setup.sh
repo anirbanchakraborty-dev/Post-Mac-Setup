@@ -1030,9 +1030,9 @@ fi
 # the first time a file needs one. Neovim asks once, naming the package and
 # its rough size, and on a yes runs `brew install` in the background. This
 # script installs none of them and the Brewfile leaves them out, so a new Mac
-# starts without any. The list is here so the hub's ship-check.mjs accepts
-# one that a yes put on this Mac instead of calling it undeclared, and a hub
-# test fails when it differs from what the configuration's scripts/on-demand
+# starts without any. The list is here so a check run before each push
+# accepts one that a yes put on this Mac instead of calling it undeclared, and
+# a test fails when it differs from what the configuration's scripts/on-demand
 # prints, so keep it sorted, one name per line. dotnet, go, llvm, r and
 # rustup are in FORMULAE as well, because tools above need them from the
 # start; those five are installed, and kept in the Brewfile, for that reason.
@@ -1090,7 +1090,7 @@ CASKS=(
     zotero              # Reference manager
     inkscape            # Vector graphics editor
 
-    # Photography (Nikon Z6III workflow - see Photography/ in the hub)
+    # Photography (Nikon Z6III workflow)
     nx-studio           # Nikon viewing/processing/editing suite (pkg install, no .app artifact)
 
     # Terminal
@@ -1117,7 +1117,7 @@ CASKS=(
     font-jetbrains-mono-nerd-font
 
     # Fonts (text and display faces used in design work). Only two of these are
-    # referenced by a build in this hub: font-inter is the website's body face
+    # referenced by a build: font-inter is the website's body face
     # (291 references under its src/, measured 2026-09-06) and font-caveat
     # appears once. The rest are display and handwriting faces that are picked
     # by hand in Inkscape and in slide decks, so nothing will fail if one is
@@ -1587,10 +1587,10 @@ fi
 # HTTPS. Without that last part a machine looks completely set up and still
 # cannot clone a private repo or push to one.
 #
-# The logic lives in the hub's Utilities/github-setup.sh rather than here, so
-# that this script, hub-bootstrap.sh, and a bare machine with no clone at all
-# all run the same code. When mac-setup.sh is run from the standalone copy of
-# this folder -- outside the hub -- that file is simply absent and the step
+# The logic lives in a github-setup.sh kept outside this repository rather
+# than here, so that this script, a bootstrap script and a bare machine with
+# no clone at all run the same code. When mac-setup.sh runs from a clone of
+# this repository on its own, that file is simply absent and the step
 # reports itself skipped instead of failing.
 #
 # Note on interactivity: everything above runs with stdout redirected into a
@@ -1605,14 +1605,14 @@ if $SKIP_GITHUB; then
 else
     MAC_SETUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     GITHUB_SETUP="$MAC_SETUP_DIR/../../Utilities/github-setup.sh"
-    # Post-Mac-Setup lives at <hub>/Utilities/Post-Mac-Setup, so the sibling
+    # Where this folder sits in a larger repository's Utilities/, the sibling
     # script is one level up. Check that spelling first, then the flatter one
     # in case this folder is ever relocated.
     [ -f "$GITHUB_SETUP" ] || GITHUB_SETUP="$MAC_SETUP_DIR/../github-setup.sh"
 
     if [ ! -f "$GITHUB_SETUP" ]; then
         info "github-setup.sh not found next to this script - skipping GitHub auth"
-        info "  (expected when running the standalone copy, outside the hub)"
+        info "  (expected when this repository is cloned on its own)"
         (( SKIPPED_COUNT++ )) || true
     elif $DRY_RUN; then
         info "[DRY RUN] Would run: $GITHUB_SETUP --dry-run"
