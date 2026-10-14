@@ -212,8 +212,6 @@ cask "loop"
 cask "mactex"
 # Office suite
 cask "microsoft-office"
-# App to write, plan, collaborate, and get organised
-cask "notion"
 # Nikon suite for viewing, processing, and editing photos and videos
 cask "nx-studio"
 # Collection of apps available by subscription

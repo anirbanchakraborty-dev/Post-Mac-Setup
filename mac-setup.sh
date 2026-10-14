@@ -1079,7 +1079,6 @@ CASKS=(
     # Productivity
     microsoft-office    # Microsoft 365 (Word, Excel, PowerPoint, etc.)
     setapp              # Setapp app subscription platform
-    notion              # Notion workspace client
 
     # LaTeX
     mactex              # Full TeX Live distribution (large ~5 GB download)

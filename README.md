@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 21 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 20 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -95,13 +95,13 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 The language-server block exists for the editor described under [The Editor](#the-editor) rather than for the shell, and a few entries are not obvious. `shellcheck` is listed because `bash-language-server` shells out to it and reports almost nothing when it is absent, which looks like a working server rather than a missing dependency. `dotnet` is here for the SDK, which carries the `dotnet tool` installer the next section uses, not because anything builds C# on this machine. The servers for LaTeX, Markdown and CMake, and the grammar checker, are not here at all: the editor installs those itself through Mason, its own package manager. Two runtimes are deliberately absent from the list: `elixir` and `ruby` each arrive as a runtime dependency of the language server above it, so a bare machine gets both without being asked, and Homebrew does not mark a dependency as installed on request.
 
-### GUI apps and fonts (32 casks)
+### GUI apps and fonts (31 casks)
 
 | Category | Casks |
 |---|---|
 | Editors and IDEs | `visual-studio-code`, `coteditor` |
 | AI | `claude`, `claude-code`, `lm-studio` |
-| Productivity | `microsoft-office`, `setapp`, `notion` |
+| Productivity | `microsoft-office`, `setapp` |
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
@@ -120,7 +120,7 @@ The language-server block exists for the editor described under [The Editor](#th
 
 None. `TAPS` is empty, so this step does nothing on a clean run, and the machinery below is documented because the array is meant to be filled again rather than because anything fills it today.
 
-Three taps have passed through it and none has stayed. `valkyrie00/bbrew` left when `bbrew` graduated to `homebrew/core` (2026-08-21). `jithin-sabu/tap` left when its only package, the `purge` cask, was uninstalled (2026-09-15) — a tap with nothing installed from it is not free, for the reason the next paragraph gives, so it was untapped rather than left declared. `chipsalliance/verible` left in the worst way, and it is the reason for the check described at the end of this section. It had been abandoned upstream since July 2025, and its formula still called `depends_on macos: :catalina`, a method Homebrew 6.x removed. **Homebrew does not load formulae lazily** — working out what is installable evaluates every formula in every tap on the machine — so that one dead definition made unrelated commands fail outright, including `brew install --cask notion`. An abandoned tap is not dormant. It is a fault waiting for the next unrelated install. Verible moved to a direct download; see below.
+Three taps have passed through it and none has stayed. `valkyrie00/bbrew` left when `bbrew` graduated to `homebrew/core` (2026-08-21). `jithin-sabu/tap` left when its only package, the `purge` cask, was uninstalled (2026-09-15) — a tap with nothing installed from it is not free, for the reason the next paragraph gives, so it was untapped rather than left declared. `chipsalliance/verible` left in the worst way, and it is the reason for the check described at the end of this section. It had been abandoned upstream since July 2025, and its formula still called `depends_on macos: :catalina`, a method Homebrew 6.x removed. **Homebrew does not load formulae lazily** — working out what is installable evaluates every formula in every tap on the machine — so that one dead definition made unrelated commands fail outright, including an ordinary `brew install --cask`. An abandoned tap is not dormant. It is a fault waiting for the next unrelated install. Verible moved to a direct download; see below.
 
 Each tap is **trusted** with `brew trust --tap` immediately after it is added. Recent Homebrew sets `$HOMEBREW_REQUIRE_TAP_TRUST` by default and refuses to load formulae from untrusted third-party taps: it prints a skip notice and leaves the package uninstalled, so without this a tapped package silently never arrives and `brew upgrade` ignores it too. Trust is granted at tap level rather than per formula, because the same setting also gates the commands that evaluate every formula and cask, which is what the `brew bundle dump` in the cleanup step does. The step is guarded on `brew trust` existing at all, since older Homebrew lacks the subcommand and does not enforce trust either way. Afterwards each tapped package is resolved with `brew info` as a verification pass, so a typo in a tap name or a tap that failed to clone surfaces as a reported failure instead of a package that quietly never installs. Both the tap list and the verification list are expanded as `${ARR[@]+"${ARR[@]}"}`, not `"${ARR[@]}"`: on a Mac with no Homebrew yet, `/usr/bin/env bash` finds the system bash 3.2, which treats the plain form on an empty array as an unbound variable under `set -u` and kills the run. That is a failure only a clean machine can have, which is exactly the machine this script is for.
 

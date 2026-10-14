@@ -166,7 +166,7 @@ so a bare machine would never get it. It is declared now.
 |---|---|
 | Editors & IDEs | `visual-studio-code`, `coteditor` |
 | AI | `claude` (desktop app), `claude-code` (terminal CLI), `lm-studio` (run local models offline) |
-| Productivity | `microsoft-office`, `setapp`, `notion` |
+| Productivity | `microsoft-office`, `setapp` |
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
