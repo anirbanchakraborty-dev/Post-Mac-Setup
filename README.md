@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 20 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 21 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -95,7 +95,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 The language-server block exists for the editor described under [The Editor](#the-editor) rather than for the shell, and a few entries are not obvious. `shellcheck` is listed because `bash-language-server` shells out to it and reports almost nothing when it is absent, which looks like a working server rather than a missing dependency. `dotnet` is here for the SDK, which carries the `dotnet tool` installer the next section uses, not because anything builds C# on this machine. The servers for LaTeX, Markdown and CMake, and the grammar checker, are not here at all: the editor installs those itself through Mason, its own package manager. Two runtimes are deliberately absent from the list: `elixir` and `ruby` each arrive as a runtime dependency of the language server above it, so a bare machine gets both without being asked, and Homebrew does not mark a dependency as installed on request.
 
-### GUI apps and fonts (31 casks)
+### GUI apps and fonts (32 casks)
 
 | Category | Casks |
 |---|---|
@@ -105,6 +105,7 @@ The language-server block exists for the editor described under [The Editor](#th
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
+| Media and audio | `focusrite-control-2` |
 | Terminal | `ghostty` |
 | Networking and security | `tailscale-app`, `surfshark` |
 | Browser and messaging | `whatsapp` |

@@ -103,6 +103,8 @@ brew "hyperfine"
 brew "icarus-verilog"
 # Tools and libraries to manipulate images in select formats
 brew "imagemagick"
+# Interpreted, interactive, object-oriented programming language
+brew "python@3.15"
 # Java language specific implementation of the Language Server Protocol
 brew "jdtls"
 # Lightweight and flexible command-line JSON processor
@@ -129,8 +131,6 @@ brew "pnpm"
 brew "poppler"
 # Code formatter for JavaScript, CSS, JSON, GraphQL, Markdown, YAML
 brew "prettier"
-# Interpreted, interactive, object-oriented programming language
-brew "python@3.15"
 # Software environment for statistical computing
 brew "r"
 # Search tool like grep and The Silver Searcher
@@ -187,6 +187,8 @@ cask "claude"
 cask "claude-code"
 # Plain-text editor for web pages, program source codes and more
 cask "coteditor"
+# Focusrite interface controller for devices of the 4th generation and newer
+cask "focusrite-control-2"
 cask "font-anton"
 cask "font-architects-daughter"
 cask "font-archivo"

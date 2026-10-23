@@ -170,6 +170,7 @@ so a bare machine would never get it. It is declared now.
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
+| Media & audio | `focusrite-control-2` (control panel for Focusrite audio interfaces, 4th generation and newer) |
 | Terminal | `ghostty` |
 | Networking & security | `tailscale-app` (renamed upstream from `tailscale`), `surfshark` (commercial VPN client) |
 | Browser & messaging | `whatsapp` |

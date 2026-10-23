@@ -1092,6 +1092,9 @@ CASKS=(
     # Photography (Nikon Z6III workflow)
     nx-studio           # Nikon viewing/processing/editing suite (pkg install, no .app artifact)
 
+    # Media & audio
+    focusrite-control-2 # Control panel for Focusrite audio interfaces (4th generation and newer)
+
     # Terminal
     ghostty             # Terminal emulator; draws images and runs Neovim
 
