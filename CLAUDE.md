@@ -132,7 +132,7 @@ than untapping, since removing a tap can orphan an installed package.
 |---|---|
 | Shells | `bash` (updated bash, replaces the macOS system bash 3.x), `zsh` (updated zsh, replaces the system zsh) |
 | Version control | `git` (replaces the system git), `git-lfs`, `gh` (GitHub CLI), `git-filter-repo` (rewrite history, purge files, rewrite authors) |
-| Languages & runtimes | `python@3` (replaces the system python), `node` (includes npm), `pnpm`, `r`, `gcc` (C, C++, Fortran), `go`, `rustup` (includes cargo, rustc) |
+| Languages & runtimes | `python@3` (replaces the system python), `node` (includes npm), `pnpm`, `r`, `gcc` (C, C++, Fortran), `go`, `rustup` (includes cargo, rustc), `cargo-deny` (checks a Rust project's licences and advisories) |
 | Python tooling | `uv` (fast Python package manager) |
 | EDA / hardware design | `icarus-verilog`, `yosys`, `sby` (SymbiYosys, the formal-verification front end for Yosys), `verilator`, `surfer` (waveform viewer for VCD, FST, GHW), `graphviz` |
 | RISC-V toolchain | `riscv64-elf-gcc` (bare-metal cross compiler), `dtc` (device tree compiler) |

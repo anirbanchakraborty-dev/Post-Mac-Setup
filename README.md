@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 75 command-line tools, 22 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 76 command-line tools, 22 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -71,13 +71,13 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 ## What Gets Installed
 
-### CLI tools (75 formulae)
+### CLI tools (76 formulae)
 
 | Category | Packages |
 |---|---|
 | Shells | `bash`, `zsh` (updated, replacing the macOS system copies) |
 | Version control | `git`, `git-lfs`, `gh`, `git-filter-repo` |
-| Languages and runtimes | `python@3`, `node`, `pnpm`, `r`, `gcc`, `go`, `rustup` |
+| Languages and runtimes | `python@3`, `node`, `pnpm`, `r`, `gcc`, `go`, `rustup`, `cargo-deny` |
 | Python tooling | `uv` |
 | EDA / hardware design | `icarus-verilog`, `yosys`, `sby`, `verilator`, `surfer`, `graphviz` |
 | RISC-V toolchain | `riscv64-elf-gcc`, `dtc` |

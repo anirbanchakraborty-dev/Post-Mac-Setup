@@ -910,6 +910,7 @@ FORMULAE=(
     gcc                 # GNU Compiler Collection (C, C++, Fortran)
     go                  # Go programming language
     rustup              # Rust toolchain installer (includes cargo, rustc)
+    cargo-deny          # Checks a Rust project's licences and security advisories
 
     # Python tooling
     uv                  # Fast Python package manager

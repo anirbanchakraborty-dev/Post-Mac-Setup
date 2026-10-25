@@ -49,6 +49,8 @@ brew "bat"
 brew "bbrew"
 # Yet another cross-platform graphical process/system monitor
 brew "bottom"
+# Cargo plugin for linting your dependencies
+brew "cargo-deny"
 # Cross-platform make
 brew "cmake"
 # GNU File, Shell, and Text utilities
