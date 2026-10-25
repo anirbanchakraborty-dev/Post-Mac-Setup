@@ -1038,9 +1038,10 @@ fi
 # starts without any. The list is here so a check run before each push
 # accepts one that a yes put on this Mac instead of calling it undeclared, and
 # a test fails when it differs from what the configuration's scripts/on-demand
-# prints, so keep it sorted, one name per line. dotnet, go, llvm, r and
-# rustup are in FORMULAE as well, because tools above need them from the
-# start; those five are installed, and kept in the Brewfile, for that reason.
+# prints, so keep it sorted, one name per line. dotnet, go, lilypond, llvm, r
+# and rustup are in FORMULAE as well, because tools above or the music lessons
+# need them from the start; those six are installed, and kept in the Brewfile,
+# for that reason.
 ON_DEMAND=(
     coursier            # Scala's installer
     dart-sdk            # Dart
@@ -1053,6 +1054,7 @@ ON_DEMAND=(
     gleam               # Gleam
     go                  # Go
     julia               # Julia
+    lilypond            # LilyPond, which engraves scores for Swara
     llvm                # LLVM: clang and clangd, for C and C++
     nixfmt              # Nix's formatter, since Mason's is built for Linux only
     nushell             # Nushell
