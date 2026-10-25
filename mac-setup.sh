@@ -1210,10 +1210,13 @@ section "Installing uv Tool Global Packages"
 # Each entry is `<PyPI package>|<what it is for>'. debugpy is here rather than
 # in a project's own virtual environment because a debugger runs the adapter
 # out of this tool environment and gives the debugged program a different
-# interpreter, so one install serves every project.
+# interpreter, so one install serves every project. mlx-whisper is OpenAI's
+# Whisper speech recognition ported to Apple's MLX, so it transcribes on the
+# GPU of an Apple Silicon Mac; the CLI is `mlx_whisper`.
 UV_TOOLS=(
     "graphifyy|knowledge-graph builder for the /graphify skill"
     "debugpy|Python debug adapter, run out of its own tool environment"
+    "mlx-whisper|speech recognition on Apple Silicon, run locally"
 )
 
 for entry in "${UV_TOOLS[@]}"; do
