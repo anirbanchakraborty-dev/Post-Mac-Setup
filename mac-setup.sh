@@ -930,6 +930,10 @@ FORMULAE=(
     ffmpeg              # Audio/video transcode and mux
     espeak-ng           # Speech synthesiser, used for narration scratch tracks
 
+    # Music notation and playback
+    lilypond            # Music engraving: typesets scores from plain-text source
+    fluid-synth         # SoundFont synthesiser that plays MIDI back as audio
+
     # Terminal utilities
     tree                # Directory listing as tree
     fzf                 # Fuzzy finder
@@ -1094,6 +1098,7 @@ CASKS=(
 
     # Media & audio
     focusrite-control-2 # Control panel for Focusrite audio interfaces (4th generation and newer)
+    musescore           # Music notation editor that also plays scores back
 
     # Terminal
     ghostty             # Terminal emulator; draws images and runs Neovim

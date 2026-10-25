@@ -1,6 +1,6 @@
 # Post-Mac-Setup
 
-A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 73 command-line tools, 21 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
+A single, idempotent Bash script that takes a Mac from a fresh install to a working development environment: Homebrew, 75 command-line tools, 22 GUI apps and 11 fonts, a configured zsh and Neovim, and a handful of macOS defaults. It is one file with no dependencies, and rerunning it is safe.
 
 The script is deliberately self-contained. Everything it needs to bootstrap a machine that has nothing on it — no Homebrew, no Xcode Command Line Tools, no `git` identity — is in `mac-setup.sh` itself.
 
@@ -71,7 +71,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 
 ## What Gets Installed
 
-### CLI tools (73 formulae)
+### CLI tools (75 formulae)
 
 | Category | Packages |
 |---|---|
@@ -83,6 +83,7 @@ Two detection details are worth knowing because they are where naive "is it inst
 | RISC-V toolchain | `riscv64-elf-gcc`, `dtc` |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils`, `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom`, `hyperfine`, `difftastic` |
 | Media and audio | `ffmpeg`, `espeak-ng` |
+| Music notation and playback | `lilypond`, `fluid-synth` |
 | Build tools | `cmake`, `llvm`, `pandoc`, `plantuml`, `poppler`, `pkgconf` |
 | Language servers | `basedpyright`, `typescript-language-server`, `bash-language-server`, `vscode-langservers-extracted`, `yaml-language-server`, `asm-lsp`, `dockerfile-language-server`, `lua-language-server`, `ruby-lsp`, `jdtls`, `elixir-ls`, `taplo` |
 | Linting and formatting | `ruff`, `prettier`, `shfmt`, `shellcheck` |
@@ -91,11 +92,11 @@ Two detection details are worth knowing because they are where naive "is it inst
 | Neovim | `neovim`, `stylua`, `tree-sitter-cli`, `lazygit`, `newsboat`, `imagemagick` |
 | Homebrew TUI | `bbrew` |
 
-`sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, `pkgconf` supplies the `pkg-config` command that build scripts use to find C libraries, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
+`sby` is the SymbiYosys formal-verification front end for Yosys, `surfer` is a waveform viewer, and `tlrc` provides the `tldr` command (the `tldr` formula itself was disabled upstream on 2025-10-24). `poppler` is there for `pdftotext` and friends, `pkgconf` supplies the `pkg-config` command that build scripts use to find C libraries, and `ffmpeg` with `espeak-ng` back an audio narration pipeline. `lilypond` typesets sheet music from a plain-text source file, and `fluid-synth` is a synthesiser that plays MIDI back as audio through a SoundFont, a file of recorded instrument samples. Note that `gcc` is installed but is deliberately not put ahead of the system compiler; see the shell section below.
 
 The language-server block exists for the editor described under [The Editor](#the-editor) rather than for the shell, and a few entries are not obvious. `shellcheck` is listed because `bash-language-server` shells out to it and reports almost nothing when it is absent, which looks like a working server rather than a missing dependency. `dotnet` is here for the SDK, which carries the `dotnet tool` installer the next section uses, not because anything builds C# on this machine. The servers for LaTeX, Markdown and CMake, and the grammar checker, are not here at all: the editor installs those itself through Mason, its own package manager. Two runtimes are deliberately absent from the list: `elixir` and `ruby` each arrive as a runtime dependency of the language server above it, so a bare machine gets both without being asked, and Homebrew does not mark a dependency as installed on request.
 
-### GUI apps and fonts (32 casks)
+### GUI apps and fonts (33 casks)
 
 | Category | Casks |
 |---|---|
@@ -105,7 +106,7 @@ The language-server block exists for the editor described under [The Editor](#th
 | LaTeX | `mactex`, `texifier`, `skim` |
 | Research and graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` |
-| Media and audio | `focusrite-control-2` |
+| Media and audio | `focusrite-control-2`, `musescore` |
 | Terminal | `ghostty` |
 | Networking and security | `tailscale-app`, `surfshark` |
 | Browser and messaging | `whatsapp` |

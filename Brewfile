@@ -1,5 +1,5 @@
 # Brewfile - a `brew bundle dump` of the reference Mac (Darwin arm64),
-# regenerated 2026-10-12. Restore with `brew bundle install`.
+# regenerated 2026-10-25. Restore with `brew bundle install`.
 #
 # Regenerate with plain `brew bundle dump --force`. Do NOT pass --describe:
 # Homebrew 6.x disabled that switch outright, because emitting the one-line
@@ -79,6 +79,8 @@ brew "eza"
 brew "fd"
 # Play, record, convert, and stream select audio and video codecs
 brew "ffmpeg"
+# Real-time software synthesizer based on the SoundFont 2 specs
+brew "fluid-synth"
 # Command-line fuzzy finder written in Go
 brew "fzf"
 # GitHub command-line tool
@@ -95,6 +97,8 @@ brew "git-lfs"
 brew "go"
 # Graph visualization software from AT&T and Bell Labs
 brew "graphviz"
+# Package compiler and linker metadata toolkit
+brew "pkgconf"
 # Improved top (interactive process viewer)
 brew "htop"
 # Command-line benchmarking tool
@@ -111,6 +115,8 @@ brew "jdtls"
 brew "jq"
 # Simple terminal UI for git commands
 brew "lazygit"
+# Music engraving system
+brew "lilypond"
 # Next-gen compiler infrastructure
 brew "llvm"
 # Language Server for the Lua language
@@ -121,8 +127,6 @@ brew "neovim"
 brew "newsboat"
 # Swiss-army knife of markup format conversion
 brew "pandoc"
-# Package compiler and linker metadata toolkit
-brew "pkgconf"
 # Draw UML diagrams
 brew "plantuml"
 # Fast, disk space efficient package manager
@@ -214,6 +218,8 @@ cask "loop"
 cask "mactex"
 # Office suite
 cask "microsoft-office"
+# Open-source music notation software
+cask "musescore"
 # Nikon suite for viewing, processing, and editing photos and videos
 cask "nx-studio"
 # Collection of apps available by subscription

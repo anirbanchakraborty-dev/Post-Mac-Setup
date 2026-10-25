@@ -138,6 +138,7 @@ than untapping, since removing a tap can orphan an installed package.
 | RISC-V toolchain | `riscv64-elf-gcc` (bare-metal cross compiler), `dtc` (device tree compiler) |
 | Terminal utilities | `tree`, `fzf`, `jq`, `eza`, `zoxide`, `ripgrep`, `coreutils` (GNU `gls`, `gdate`, …), `wget`, `curl`, `bat`, `fd`, `htop`, `tlrc`, `dust`, `bottom` (the `btm` command), `hyperfine`, `difftastic` |
 | Media & audio | `ffmpeg` (transcode and mux), `espeak-ng` (speech synthesiser for narration scratch tracks) |
+| Music notation & playback | `lilypond` (engraves scores from plain-text source), `fluid-synth` (SoundFont synthesiser that plays MIDI back as audio) |
 | Build tools | `cmake`, `llvm`, `pandoc`, `plantuml` (uses graphviz), `poppler` (`pdftotext`, `pdfinfo`, `pdftoppm`, `pdfimages`), `pkgconf` (the `pkg-config` command) |
 | Homebrew TUI | `bbrew` (Bold Brew, now in homebrew/core) |
 
@@ -170,7 +171,7 @@ so a bare machine would never get it. It is declared now.
 | LaTeX | `mactex` (full TeX Live, ~5 GB), `texifier`, `skim` (PDF viewer with SyncTeX support) |
 | Research & graphics | `zotero`, `inkscape` |
 | Photography | `nx-studio` (Nikon viewing/processing suite; a pkg install with no `.app` artifact) |
-| Media & audio | `focusrite-control-2` (control panel for Focusrite audio interfaces, 4th generation and newer) |
+| Media & audio | `focusrite-control-2` (control panel for Focusrite audio interfaces, 4th generation and newer), `musescore` (music notation editor that also plays scores back) |
 | Terminal | `ghostty` |
 | Networking & security | `tailscale-app` (renamed upstream from `tailscale`), `surfshark` (commercial VPN client) |
 | Browser & messaging | `whatsapp` |
