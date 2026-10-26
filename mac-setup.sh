@@ -1213,6 +1213,12 @@ section "Installing uv Tool Global Packages"
 # interpreter, so one install serves every project. mlx-whisper is OpenAI's
 # Whisper speech recognition ported to Apple's MLX, so it transcribes on the
 # GPU of an Apple Silicon Mac; the CLI is `mlx_whisper`.
+# Each tool is built on a uv-managed Python (--managed-python), never on
+# Homebrew's. A tool environment points at the interpreter it was built on, and
+# Homebrew removes python@3.14 when python@3.15 replaces it, so on 2026-10-25
+# graphifyy and skillspector lost theirs and vanished from `uv tool list`.
+# uv keeps its own Pythons until told to remove them, and debugpy, which was
+# already on one, survived the same upgrade.
 UV_TOOLS=(
     "graphifyy|knowledge-graph builder for the /graphify skill"
     "debugpy|Python debug adapter, run out of its own tool environment"
@@ -1223,7 +1229,7 @@ for entry in "${UV_TOOLS[@]}"; do
     uv_pkg="${entry%%|*}"
     uv_what="${entry#*|}"
     if ! command -v uv &>/dev/null; then
-        warn "uv not found - skipping $uv_pkg. uv comes from the Homebrew formulae step above; if it failed, install manually then run: uv tool install $uv_pkg"
+        warn "uv not found - skipping $uv_pkg. uv comes from the Homebrew formulae step above; if it failed, install manually then run: uv tool install --managed-python $uv_pkg"
         FAILED_ITEMS+=("$uv_pkg (uv tool)")
     elif uv tool list 2>/dev/null | grep -q "^$uv_pkg "; then
         success "$uv_pkg (uv tool) (already installed)"
@@ -1232,7 +1238,7 @@ for entry in "${UV_TOOLS[@]}"; do
         info "[DRY RUN] Would install $uv_pkg via uv tool"
     else
         info "Installing $uv_pkg ($uv_what)..."
-        if uv tool install "$uv_pkg"; then
+        if uv tool install --managed-python "$uv_pkg"; then
             success "$uv_pkg (uv tool)"
             (( INSTALLED_COUNT++ )) || true
         else
