@@ -229,6 +229,7 @@ The cleanup step runs `brew cleanup` and exports a `Brewfile` snapshot of everyt
 The script prints these itself when it finishes, in this order:
 
 - Open Ghostty and use it from now on, or run `exec zsh`. Its settings, `~/.config/ghostty/config.ghostty`, are a link into `~/.config/nvim` and set MesloLGS Nerd Font Mono, the font the prompt's icons need. With `--skip-editor` there is no link, so set that font in Ghostty yourself.
+- Set the Claude desktop app's Code font to MesloLGS Nerd Font Mono, under Settings > Appearance > Code appearance > Code font. The Terminal panel in the app's Code tab draws with that font, and its default has none of the prompt's icons. No dotfile can set it.
 - Confirm the Homebrew versions are winning: `which git`, `which python3`, `which zsh`, `which bash` should all point inside the Homebrew prefix.
 - Sign in to the apps that need accounts.
 
