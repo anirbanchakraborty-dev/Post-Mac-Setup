@@ -29,9 +29,10 @@ is actually on the machine rather than what the package lists say should be.
    on-disk verification of the ones that ship an `.app`.
 6. **npm globals** — `netlistsvg` (a schematic viewer for Yosys JSON netlists),
    skipped when it is already in `npm list -g`.
-7. **uv tool globals** — `graphifyy` via `uv tool install` (the PyPI package is
-   `graphifyy` with a double y; the command it installs is `graphify`), skipped
-   when it is already in `uv tool list`. Depends on `uv` from the formulae step.
+7. **uv tool globals** — `debugpy` (a Python debug adapter) and `mlx-whisper`
+   (speech recognition on Apple Silicon, whose command is `mlx_whisper`) via
+   `uv tool install`, each skipped when it is already in `uv tool list`.
+   Depends on `uv` from the formulae step.
 8. **Extras (direct downloads)** — software fetched straight from the publisher
    rather than through Homebrew, in two shapes: a vendor `.pkg` run through
    `installer` (Microsoft Edge, via `install_pkg_from_url`), and a release

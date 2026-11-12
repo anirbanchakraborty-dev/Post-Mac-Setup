@@ -1204,10 +1204,6 @@ done
 # ─────────────────────────────────────────────────────────────────────
 section "Installing uv Tool Global Packages"
 
-# graphifyy - knowledge-graph builder used by the /graphify skill, which is
-# vendored per-project rather than installed once, so each project that wants it
-# carries its own copy under .claude/skills/graphify/.
-# PyPI package is `graphifyy` (double-y), CLI is `graphify`.
 # Detection runs under --dry-run too. It is read-only, and an unconditional
 # "[DRY RUN] Would install" placed ahead of it reported packages that were
 # already present - the same early-return bug batch_install had until
@@ -1221,11 +1217,11 @@ section "Installing uv Tool Global Packages"
 # Each tool is built on a uv-managed Python (--managed-python), never on
 # Homebrew's. A tool environment points at the interpreter it was built on, and
 # Homebrew removes python@3.14 when python@3.15 replaces it, so on 2026-10-25
-# graphifyy and skillspector lost theirs and vanished from `uv tool list`.
+# graphifyy (removed 2026-11-12) and skillspector lost theirs and vanished
+# from `uv tool list`.
 # uv keeps its own Pythons until told to remove them, and debugpy, which was
 # already on one, survived the same upgrade.
 UV_TOOLS=(
-    "graphifyy|knowledge-graph builder for the /graphify skill"
     "debugpy|Python debug adapter, run out of its own tool environment"
     "mlx-whisper|speech recognition on Apple Silicon, run locally"
 )
