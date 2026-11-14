@@ -127,6 +127,8 @@ brew "lua-language-server"
 brew "neovim"
 # RSS/Atom feed reader for text terminals
 brew "newsboat"
+# High-level interpreted language for numerical computing
+brew "octave"
 # Swiss-army knife of markup format conversion
 brew "pandoc"
 # Draw UML diagrams

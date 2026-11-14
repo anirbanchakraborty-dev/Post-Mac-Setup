@@ -912,6 +912,7 @@ FORMULAE=(
     node                # Node.js (includes npm)
     pnpm                # Fast Node.js package manager
     r                   # R language for statistical computing
+    octave              # GNU Octave, a MATLAB-compatible language for numerical computing
     gcc                 # GNU Compiler Collection (C, C++, Fortran)
     go                  # Go programming language
     rustup              # Rust toolchain installer (includes cargo, rustc)
